@@ -2,7 +2,7 @@ name: Coleta de voos
 
 on:
   schedule:
-    # a cada 10 min, fora do minuto cheio (o GitHub atrasa mais os agendamentos na hora cheia)
+    # a cada 10 min, fora do minuto cheio (o GitHub atrasa mais os agendamentos na hora cheia) - ok
     - cron: '3-59/10 * * * *'
   workflow_dispatch:
 
