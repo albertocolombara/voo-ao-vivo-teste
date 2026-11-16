@@ -1,0 +1,6 @@
+{"k":"run","id":1,"ts":1794854098999,"metered_calls":4,"route_calls":2,"errors":2,"ms":25678}
+{"k":"ps","run_id":1,"ts":1794854098999,"point":"BR-Sudeste","status":"ok","http":200,"ms":611,"seen":103,"airborne":94,"routed":0,"coherent":0,"b25":0,"b50":0,"b90":0,"b180":0,"b360":0}
+{"k":"ps","run_id":1,"ts":1794854098999,"point":"BR-Centro","status":"ok","http":200,"ms":1933,"seen":9,"airborne":8,"routed":0,"coherent":0,"b25":0,"b50":0,"b90":0,"b180":0,"b360":0}
+{"k":"ps","run_id":1,"ts":1794854098999,"point":"BR-Nordeste","status":"ok","http":200,"ms":311,"seen":5,"airborne":4,"routed":0,"coherent":0,"b25":0,"b50":0,"b90":0,"b180":0,"b360":0}
+{"k":"ps","run_id":1,"ts":1794854098999,"point":"Atlântico Norte","status":"ok","http":200,"ms":325,"seen":0,"airborne":0,"routed":0,"coherent":0,"b25":0,"b50":0,"b90":0,"b180":0,"b360":0}
+{"k":"ps","run_id":1,"ts":1794854098999,"point":"BR","status":"ok","http":null,"ms":2855,"seen":117,"airborne":104,"routed":0,"coherent":0,"b25":0,"b50":0,"b90":0,"b180":0,"b360":0}
