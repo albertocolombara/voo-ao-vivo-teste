@@ -8,6 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb } from '../src/db.mjs';
 import { collect, computeStats, renderStats, flightsResponse } from '../src/index.js';
+import { createVrsRoutes } from '../src/routes-vrs.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DATA = process.env.DATA_DIR || path.join(root, 'data');
@@ -40,6 +41,13 @@ const maxRun = all('SELECT COALESCE(MAX(id), 0) AS m FROM runs')[0].m;
 
 // 2. coleta
 const env = { DB, ADSBLOL_KEY: process.env.ADSBLOL_KEY || '' };
+// Rotas: base aberta do VRS se a pasta existir (o workflow baixa uma vez por dia); senão, routeset do adsb.lol.
+const sdDir = process.env.STANDING_DATA_DIR || path.join(root, 'standing-data');
+let vrs = null;
+if (fs.existsSync(sdDir)) {
+  vrs = createVrsRoutes(sdDir);
+  env.routeLookup = vrs.lookup;
+}
 const result = await collect(env, now);
 
 // 3. grava o que é novo
@@ -69,6 +77,8 @@ fs.writeFileSync(STATE, JSON.stringify(state));
 
 // resumo no log
 const pts = result.rows.map((r) => `${r.point}: ${r.status} ${r.coherent}/${r.airborne}`).join(' · ');
+if (vrs) console.log(`rotas: base VRS · ${vrs.stats.asked} indicativos · ${vrs.stats.found} com rota · ${vrs.stats.notAirline} sem formato de companhia · ${vrs.stats.missingAirport} com aeroporto desconhecido`);
+else console.log('rotas: routeset do adsb.lol');
 if (result.failures?.length) console.log('ERROS:\n' + result.failures.join('\n'));
 console.log(`coleta ${result.runId} · rotas ${result.routeCalls} chamadas · erros ${result.errors}\n${pts}\npainel: ${publish ? 'gerado' : 'não'}`);
 if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `publish=${publish}\n`);

@@ -136,9 +136,17 @@ async function fetchPoint(env, p) {
   }
 }
 
-// Rotas: endpoint grátis, em lotes. Devolve Map(callsign -> rota), quantas chamadas fez e os erros.
-async function fetchRoutes(planes) {
+// Rotas. Se env.routeLookup existir (base aberta do VRS), usa a base local, sem chamadas.
+// Senão, usa o routeset do adsb.lol em lotes. Devolve Map(callsign -> rota), chamadas feitas e erros.
+async function fetchRoutes(planes, env = {}) {
   const routes = new Map();
+  if (typeof env.routeLookup === 'function') {
+    for (const p of planes) {
+      const r = env.routeLookup(p.callsign);
+      if (r) routes.set(p.callsign, r);
+    }
+    return { routes, calls: 0, errors: 0, failures: [] };
+  }
   let calls = 0;
   const failures = [];
   for (let i = 0; i < planes.length; i += 100) {
@@ -187,7 +195,7 @@ export async function collect(env, now = Date.now()) {
   // 2. rotas (grátis), sem repetir indicativo
   const seenCs = new Map();
   for (const r of raw) for (const a of r.air) if (!seenCs.has(a.flight.trim())) seenCs.set(a.flight.trim(), { callsign: a.flight.trim(), lat: a.lat, lng: a.lon });
-  const { routes, calls: routeCalls, errors: routeErrors, failures } = await fetchRoutes([...seenCs.values()]);
+  const { routes, calls: routeCalls, errors: routeErrors, failures } = await fetchRoutes([...seenCs.values()], env);
   errors += routeErrors;
 
   // 3. estatísticas por ponto + total do Brasil sem repetição

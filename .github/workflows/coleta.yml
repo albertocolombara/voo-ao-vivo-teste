@@ -25,6 +25,26 @@ jobs:
         with:
           node-version: 22
 
+      - name: Data de hoje
+        id: hoje
+        run: echo "d=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      # Base aberta de rotas do Virtual Radar Server (CC0), baixada uma vez por dia
+      - name: Base de rotas (cache)
+        id: sd
+        uses: actions/cache@v4
+        with:
+          path: standing-data
+          key: standing-data-${{ steps.hoje.outputs.d }}
+
+      - name: Baixar base de rotas
+        if: steps.sd.outputs.cache-hit != 'true'
+        run: |
+          rm -rf standing-data
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/vradarserver/standing-data standing-data
+          git -C standing-data sparse-checkout set routes airports
+          rm -rf standing-data/.git
+
       - name: Coletar
         id: coleta
         run: node --no-warnings scripts/run.mjs
