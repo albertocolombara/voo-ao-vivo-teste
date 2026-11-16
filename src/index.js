@@ -41,6 +41,7 @@ const WATCH_DEST_KM = 400; // só acompanha voos que pousam dentro da cobertura 
 const LOST_AFTER_MS = 20 * 60000;
 const LANDED_KM = 200; // sumiu a menos disso do destino = pousou (fora disso = perdido)
 const ATTRIBUTION = 'Dados de voo: adsb.lol (ODbL 1.0)';
+const UA = 'voo-ao-vivo-teste/0.1 (+https://github.com/albertocolombara/voo-ao-vivo-teste)';
 
 // ---------- geometria ----------
 const R_KM = 6371;
@@ -121,7 +122,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function fetchPoint(env, p) {
   const t0 = Date.now();
-  const headers = { accept: 'application/json' };
+  const headers = { accept: 'application/json', 'user-agent': UA };
   if (env.ADSBLOL_KEY) headers['x-api-key'] = env.ADSBLOL_KEY;
   try {
     const res = await fetch(`${API}/v2/point/${p.lat}/${p.lon}/${RADIUS_NM}`, { headers });
@@ -135,31 +136,32 @@ async function fetchPoint(env, p) {
   }
 }
 
-// Rotas: endpoint grátis, em lotes. Devolve Map(callsign -> rota) e quantas chamadas fez.
+// Rotas: endpoint grátis, em lotes. Devolve Map(callsign -> rota), quantas chamadas fez e os erros.
 async function fetchRoutes(planes) {
   const routes = new Map();
   let calls = 0;
-  let errors = 0;
+  const failures = [];
   for (let i = 0; i < planes.length; i += 100) {
     const chunk = planes.slice(i, i + 100);
     calls++;
     try {
       const res = await fetch(`${API}/api/0/routeset`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        headers: { 'content-type': 'application/json', accept: 'application/json', 'user-agent': UA },
         body: JSON.stringify({ planes: chunk }),
       });
+      const text = await res.text();
       if (!res.ok) {
-        errors++;
+        failures.push(`routeset HTTP ${res.status}: ${text.slice(0, 200).replace(/\s+/g, ' ')}`);
         continue;
       }
-      const list = await res.json();
+      const list = JSON.parse(text);
       for (const r of Array.isArray(list) ? list : []) if (r?.callsign) routes.set(r.callsign.trim(), r);
-    } catch {
-      errors++;
+    } catch (e) {
+      failures.push(`routeset falhou: ${e?.message || e}${e?.cause ? ' (' + (e.cause.code || e.cause.message || e.cause) + ')' : ''}`);
     }
   }
-  return { routes, calls, errors };
+  return { routes, calls, errors: failures.length, failures };
 }
 
 function emptyStats() {
@@ -185,7 +187,7 @@ export async function collect(env, now = Date.now()) {
   // 2. rotas (grátis), sem repetir indicativo
   const seenCs = new Map();
   for (const r of raw) for (const a of r.air) if (!seenCs.has(a.flight.trim())) seenCs.set(a.flight.trim(), { callsign: a.flight.trim(), lat: a.lat, lng: a.lon });
-  const { routes, calls: routeCalls, errors: routeErrors } = await fetchRoutes([...seenCs.values()]);
+  const { routes, calls: routeCalls, errors: routeErrors, failures } = await fetchRoutes([...seenCs.values()]);
   errors += routeErrors;
 
   // 3. estatísticas por ponto + total do Brasil sem repetição
@@ -256,7 +258,7 @@ export async function collect(env, now = Date.now()) {
   // 5. acompanhamento de pouso (só Brasil, consultado em toda execução)
   if (br.status === 'ok') await trackLandings(env, now, brAir, brFlights);
 
-  return { runId, rows, routeCalls, errors };
+  return { runId, rows, routeCalls, errors, failures };
 }
 
 async function trackLandings(env, now, brAir, brFlights) {

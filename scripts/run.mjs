@@ -69,5 +69,6 @@ fs.writeFileSync(STATE, JSON.stringify(state));
 
 // resumo no log
 const pts = result.rows.map((r) => `${r.point}: ${r.status} ${r.coherent}/${r.airborne}`).join(' · ');
+if (result.failures?.length) console.log('ERROS:\n' + result.failures.join('\n'));
 console.log(`coleta ${result.runId} · rotas ${result.routeCalls} chamadas · erros ${result.errors}\n${pts}\npainel: ${publish ? 'gerado' : 'não'}`);
 if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `publish=${publish}\n`);
