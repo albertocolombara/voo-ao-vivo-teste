@@ -8,7 +8,7 @@ Roda no **GitHub Actions** (de graça em repositório público) e publica um pai
 A cada 10 minutos ele:
 
 1. consulta 3 regiões do Brasil e 1 região do mundo (em rodízio entre 8);
-2. busca a rota de cada avião e descarta as rotas que não batem com a posição e o rumo;
+2. busca a rota de cada avião na base aberta do Virtual Radar Server (baixada uma vez por dia) e descarta as rotas que não batem com a posição e o rumo;
 3. calcula quando cada voo pousa e conta quantos há em cada faixa de tempo de foco;
 4. acompanha alguns voos brasileiros até o pouso para medir o erro da previsão;
 5. salva as medições na pasta `data/` do próprio repositório.
@@ -72,3 +72,6 @@ Com Node.js 22 ou mais novo:
 - `npm test` simula 24 horas com um adsb.lol falso e gera `test/out/public/index.html`. Os números da simulação são inventados; servem só para conferir que o código funciona.
 
 Dados de voo: adsb.lol, licença ODbL 1.0. O app final precisa mostrar essa atribuição.
+Rotas: [Virtual Radar Server Standing Data](https://github.com/vradarserver/standing-data), licença CC0 1.0 (domínio público).
+
+O serviço de rotas do próprio adsb.lol (`/api/0/routeset`) responde vazio quando chamado fora do navegador, por isso não é usado.

@@ -40,7 +40,7 @@ const WATCH_MAX_ACTIVE = 200;
 const WATCH_DEST_KM = 400; // só acompanha voos que pousam dentro da cobertura do Brasil
 const LOST_AFTER_MS = 20 * 60000;
 const LANDED_KM = 200; // sumiu a menos disso do destino = pousou (fora disso = perdido)
-const ATTRIBUTION = 'Dados de voo: adsb.lol (ODbL 1.0)';
+const ATTRIBUTION = 'Dados de voo: adsb.lol (ODbL 1.0) · Rotas: Virtual Radar Server Standing Data (CC0 1.0)';
 const UA = 'voo-ao-vivo-teste/0.1 (+https://github.com/albertocolombara/voo-ao-vivo-teste)';
 
 // ---------- geometria ----------
