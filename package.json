@@ -1,0 +1,11 @@
+{
+  "name": "voo-ao-vivo-teste",
+  "private": true,
+  "type": "module",
+  "description": "Teste de voos ao vivo com adsb.lol, rodando no GitHub Actions",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "coleta": "node --no-warnings scripts/run.mjs",
+    "test": "node test/sim.mjs"
+  }
+}

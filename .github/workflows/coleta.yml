@@ -1,0 +1,62 @@
+name: Coleta de voos
+
+on:
+  schedule:
+    # a cada 10 min, fora do minuto cheio (o GitHub atrasa mais os agendamentos na hora cheia)
+    - cron: '3-59/10 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: coleta
+  cancel-in-progress: false
+
+jobs:
+  coleta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: write
+    outputs:
+      publish: ${{ steps.coleta.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Coletar
+        id: coleta
+        run: node --no-warnings scripts/run.mjs
+        env:
+          ADSBLOL_KEY: ${{ secrets.ADSBLOL_KEY }}
+          FORCE_PUBLISH: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+
+      - name: Salvar dados no repositório
+        run: |
+          git config user.name "coleta-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          git commit -m "coleta $(date -u +%Y-%m-%dT%H:%MZ)" || exit 0
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
+
+      - name: Preparar painel
+        if: steps.coleta.outputs.publish == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  painel:
+    needs: coleta
+    if: needs.coleta.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Publicar no GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
