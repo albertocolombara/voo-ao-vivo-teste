@@ -4,7 +4,14 @@ on:
   schedule:
     # a cada 10 min, fora do minuto cheio (o GitHub atrasa mais os agendamentos na hora cheia) - ok
     - cron: '3-59/10 * * * *'
+  # disparo manual (botão Run workflow) e externo (cron-job.org, a cada 10 min).
+  # O disparo externo manda publicar=false, para o painel continuar sendo publicado 1x por hora.
   workflow_dispatch:
+    inputs:
+      publicar:
+        description: 'Publicar o painel agora'
+        type: boolean
+        default: true
 
 concurrency:
   group: coleta
@@ -50,7 +57,7 @@ jobs:
         run: node --no-warnings scripts/run.mjs
         env:
           ADSBLOL_KEY: ${{ secrets.ADSBLOL_KEY }}
-          FORCE_PUBLISH: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+          FORCE_PUBLISH: ${{ github.event_name == 'workflow_dispatch' && inputs.publicar && '1' || '0' }}
 
       - name: Salvar dados no repositório
         run: |
