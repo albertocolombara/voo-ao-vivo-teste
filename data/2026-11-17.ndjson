@@ -506,3 +506,8 @@
 {"k":"ps","run_id":46,"ts":1794951025843,"point":"Frankfurt","status":"ok","http":200,"ms":215,"seen":324,"airborne":262,"routed":234,"coherent":210,"b25":40,"b50":47,"b90":10,"b180":18,"b360":22}
 {"k":"ps","run_id":46,"ts":1794951025843,"point":"Dubai","status":"ok","http":200,"ms":183,"seen":68,"airborne":53,"routed":46,"coherent":41,"b25":3,"b50":2,"b90":14,"b180":12,"b360":3}
 {"k":"ps","run_id":46,"ts":1794951025843,"point":"MUNDO","status":"ok","http":null,"ms":null,"seen":9,"airborne":0,"routed":0,"coherent":876,"b25":167,"b50":155,"b90":122,"b180":82,"b360":59}
+{"k":"run","id":47,"ts":1794951619456,"metered_calls":3,"route_calls":0,"errors":0,"ms":6454}
+{"k":"ps","run_id":47,"ts":1794951619456,"point":"Nova York","status":"ok","http":200,"ms":578,"seen":909,"airborne":569,"routed":276,"coherent":224,"b25":59,"b50":30,"b90":37,"b180":17,"b360":4}
+{"k":"ps","run_id":47,"ts":1794951619456,"point":"Los Angeles","status":"ok","http":200,"ms":169,"seen":684,"airborne":441,"routed":173,"coherent":135,"b25":46,"b50":20,"b90":15,"b180":10,"b360":4}
+{"k":"ps","run_id":47,"ts":1794951619456,"point":"Chicago","status":"ok","http":200,"ms":167,"seen":930,"airborne":731,"routed":321,"coherent":251,"b25":53,"b50":64,"b90":50,"b180":24,"b360":5}
+{"k":"ps","run_id":47,"ts":1794951619456,"point":"MUNDO","status":"ok","http":null,"ms":null,"seen":9,"airborne":0,"routed":0,"coherent":993,"b25":244,"b50":161,"b90":144,"b180":87,"b360":56}
