@@ -15,6 +15,7 @@ const DATA = process.env.DATA_DIR || path.join(root, 'data');
 const OUT = process.env.OUT_DIR || path.join(root, 'public');
 const ACTIVE = path.join(DATA, 'watch-active.json');
 const STATE = path.join(DATA, 'state.json');
+const LITE = path.join(DATA, 'snapshots-lite.json'); // última foto de cada região: [hex, tempo até o pouso]
 const PUBLISH_EVERY_MS = 55 * 60000;
 const now = Number(process.env.NOW || Date.now());
 
@@ -40,7 +41,7 @@ const state = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, 'utf8')) 
 const maxRun = all('SELECT COALESCE(MAX(id), 0) AS m FROM runs')[0].m;
 
 // 2. coleta
-const env = { DB, ADSBLOL_KEY: process.env.ADSBLOL_KEY || '' };
+const env = { DB, ADSBLOL_KEY: process.env.ADSBLOL_KEY || '', snapshotsLite: fs.existsSync(LITE) ? JSON.parse(fs.readFileSync(LITE, 'utf8')) : {} };
 // Rotas: base aberta do VRS se a pasta existir (o workflow baixa uma vez por dia); senão, routeset do adsb.lol.
 const sdDir = process.env.STANDING_DATA_DIR || path.join(root, 'standing-data');
 let vrs = null;
@@ -60,6 +61,7 @@ const lines = [
 ];
 const day = new Date(now - 3 * 3600000).toISOString().slice(0, 10); // dia em Brasília
 fs.appendFileSync(path.join(DATA, `${day}.ndjson`), lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+fs.writeFileSync(LITE, JSON.stringify(env.snapshotsLite));
 fs.writeFileSync(ACTIVE, JSON.stringify(all("SELECT * FROM watch WHERE status = 'active'")));
 
 // 4. painel (uma vez por hora, ou sempre com FORCE_PUBLISH=1)

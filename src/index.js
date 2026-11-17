@@ -10,23 +10,24 @@ const API = 'https://api.adsb.lol';
 const RADIUS_NM = 250;
 const SPACING_MS = 2500; // pausa entre chamadas que contam na cota (evita 429)
 
-// Brasil: consultado em toda execução. O "BR" junta os três sem contar avião repetido.
-const BR_POINTS = [
-  { id: 'BR-Sudeste', lat: -23.0, lon: -46.0 },
-  { id: 'BR-Centro', lat: -15.8, lon: -47.9 },
-  { id: 'BR-Nordeste', lat: -9.5, lon: -37.0 },
-];
-// Mundo: um ponto por execução, em rodízio (cada um volta a cada 80 min).
+// Modo mundial: 9 regiões espalhadas pelos fusos horários, em 3 grupos.
+// Cada execução (a cada 10 min) consulta um grupo de 3, então cada região é atualizada a cada 30 min.
+// 3 chamadas por execução = 432 por dia, abaixo do limite sem chave (500).
 const WORLD_POINTS = [
   { id: 'Londres-Paris', lat: 50.5, lon: 0.5 },
-  { id: 'Frankfurt', lat: 50.0, lon: 8.6 },
   { id: 'Nova York', lat: 40.6, lon: -73.8 },
-  { id: 'Los Angeles', lat: 34.0, lon: -118.4 },
-  { id: 'Dubai', lat: 25.2, lon: 55.4 },
   { id: 'Tóquio', lat: 35.6, lon: 139.8 },
-  { id: 'Singapura', lat: 1.4, lon: 103.9 },
-  { id: 'Atlântico Norte', lat: 52.0, lon: -30.0 }, // mede cobertura sobre o oceano
+  { id: 'Frankfurt', lat: 50.0, lon: 8.6 },
+  { id: 'Los Angeles', lat: 34.0, lon: -118.4 },
+  { id: 'Sydney', lat: -33.9, lon: 151.2 },
+  { id: 'Dubai', lat: 25.2, lon: 55.4 },
+  { id: 'Chicago', lat: 41.9, lon: -87.9 },
+  { id: 'São Paulo', lat: -23.0, lon: -46.0 },
 ];
+const GROUPS = 3;
+const MUNDO = 'MUNDO';
+const FRESH_MS = 40 * 60000; // fotos de região com até 40 min entram na soma mundial
+const RADIUS_KM = RADIUS_NM * 1.852;
 
 const BUCKETS = [
   ['b25', 25, 50],
@@ -35,11 +36,11 @@ const BUCKETS = [
   ['b180', 180, 360],
   ['b360', 360, Infinity],
 ];
-const WATCH_NEW_PER_RUN = 8;
-const WATCH_MAX_ACTIVE = 200;
-const WATCH_DEST_KM = 400; // só acompanha voos que pousam dentro da cobertura do Brasil
-const LOST_AFTER_MS = 20 * 60000;
-const LANDED_KM = 200; // sumiu a menos disso do destino = pousou (fora disso = perdido)
+const WATCH_SHORT_PER_RUN = 3; // voos com pouso em menos de 90 min
+const WATCH_LONG_PER_RUN = 5; // voos de 90 min ou mais (o que ainda falta medir)
+const WATCH_MAX_ACTIVE = 300;
+const WATCH_DEST_KM = 400; // só acompanha voos cujo destino fica dentro de uma das 9 regiões
+const LANDED_WINDOW_MS = 45 * 60000; // visto perto do destino há até 45 min e sumiu = pousou
 const ATTRIBUTION = 'Dados de voo: adsb.lol (ODbL 1.0) · Rotas: Virtual Radar Server Standing Data (CC0 1.0)';
 const UA = 'voo-ao-vivo-teste/0.1 (+https://github.com/albertocolombara/voo-ao-vivo-teste)';
 
@@ -179,10 +180,10 @@ function emptyStats() {
 // ---------- coleta (cron) ----------
 export async function collect(env, now = Date.now()) {
   const t0 = Date.now();
-  const world = WORLD_POINTS[Math.floor(now / 600000) % WORLD_POINTS.length];
-  const points = [...BR_POINTS, world];
+  const slot = Math.floor(now / 600000) % GROUPS;
+  const points = WORLD_POINTS.filter((_, i) => i % GROUPS === slot);
 
-  // 1. aviões por ponto (chamadas que contam na cota)
+  // 1. aviões por região (chamadas que contam na cota)
   const raw = [];
   let errors = 0;
   for (let i = 0; i < points.length; i++) {
@@ -192,26 +193,24 @@ export async function collect(env, now = Date.now()) {
     raw.push({ point: points[i], ...r, air: r.ac.filter(airborne) });
   }
 
-  // 2. rotas (grátis), sem repetir indicativo
+  // 2. rotas, sem repetir indicativo
   const seenCs = new Map();
   for (const r of raw) for (const a of r.air) if (!seenCs.has(a.flight.trim())) seenCs.set(a.flight.trim(), { callsign: a.flight.trim(), lat: a.lat, lng: a.lon });
   const { routes, calls: routeCalls, errors: routeErrors, failures } = await fetchRoutes([...seenCs.values()], env);
   errors += routeErrors;
 
-  // 3. estatísticas por ponto + total do Brasil sem repetição
+  // 3. estatísticas por região
   const rows = [];
   const snapshots = [];
-  const br = { status: 'ok', ms: 0, stats: emptyStats(), hexes: new Set() };
-  const brFlights = new Map(); // hex -> voo coerente (para o acompanhamento de pouso)
-  const brAir = new Map(); // hex -> aeronave no ar (para achar quem já pousou)
-
+  const airMap = new Map(); // hex -> aeronave no ar nesta execução
+  const flightsByPoint = new Map(); // região -> voos coerentes
   for (const r of raw) {
     const s = emptyStats();
     s.seen = r.ac.length;
     const flights = [];
-    const isBR = BR_POINTS.includes(r.point);
     for (const a of r.air) {
       s.airborne++;
+      airMap.set(a.hex, a);
       const route = routes.get(a.flight.trim());
       const { routed, leg } = route ? matchLeg(route, a) : { routed: false, leg: null };
       if (routed) s.routed++;
@@ -222,32 +221,41 @@ export async function collect(env, now = Date.now()) {
         if (b) s[b]++;
         flights.push(f);
       }
-      if (isBR) {
-        brAir.set(a.hex, a);
-        if (!br.hexes.has(a.hex)) {
-          br.hexes.add(a.hex);
-          br.stats.airborne++;
-          if (routed) br.stats.routed++;
-          if (f) {
-            br.stats.coherent++;
-            const b = bucketOf(f.eta);
-            if (b) br.stats[b]++;
-            brFlights.set(a.hex, f);
-          }
-        }
-      }
-    }
-    if (isBR) {
-      br.stats.seen += s.seen;
-      br.ms += r.ms;
-      if (r.status !== 'ok') br.status = r.status;
     }
     rows.push({ point: r.point.id, status: r.status, http: r.http, ms: r.ms, ...s });
-    if (r.status === 'ok') snapshots.push({ point: r.point.id, json: JSON.stringify(flights) });
+    if (r.status === 'ok') {
+      snapshots.push({ point: r.point.id, json: JSON.stringify(flights) });
+      flightsByPoint.set(r.point.id, flights);
+    }
   }
-  rows.push({ point: 'BR', status: br.status, http: null, ms: br.ms, ...br.stats });
 
-  // 4. grava
+  // 4. soma mundial: última foto de cada região (até 40 min), sem repetir avião,
+  //    com o tempo de pouso descontado pela idade da foto
+  if (env.snapshotsLite) {
+    for (const [id, flights] of flightsByPoint) env.snapshotsLite[id] = { ts: now, f: flights.map((f) => [f.hex, f.eta]) };
+    const best = new Map();
+    let fresh = 0;
+    for (const [, snap] of Object.entries(env.snapshotsLite)) {
+      if (now - snap.ts > FRESH_MS) continue;
+      fresh++;
+      for (const [hex, eta] of snap.f) {
+        const etaNow = eta - (now - snap.ts) / 60000;
+        if (etaNow < 5) continue;
+        const prev = best.get(hex);
+        if (!prev || prev.ts < snap.ts) best.set(hex, { ts: snap.ts, eta: etaNow });
+      }
+    }
+    const m = emptyStats();
+    m.seen = fresh; // quantas regiões entraram na soma
+    for (const { eta } of best.values()) {
+      m.coherent++;
+      const b = bucketOf(eta);
+      if (b) m[b]++;
+    }
+    rows.push({ point: MUNDO, status: fresh ? 'ok' : 'error', http: null, ms: null, ...m });
+  }
+
+  // 5. grava
   const runId = await env.DB.prepare(
     'INSERT INTO runs (ts, metered_calls, route_calls, errors, ms) VALUES (?, ?, ?, ?, ?) RETURNING id'
   )
@@ -263,67 +271,74 @@ export async function collect(env, now = Date.now()) {
     stmts.push(env.DB.prepare('INSERT OR REPLACE INTO snapshot (point, ts, json) VALUES (?, ?, ?)').bind(s.point, now, s.json));
   await env.DB.batch(stmts);
 
-  // 5. acompanhamento de pouso (só Brasil, consultado em toda execução)
-  if (br.status === 'ok') await trackLandings(env, now, brAir, brFlights);
+  // 6. acompanhamento de pouso
+  await trackLandings(env, now, new Set(flightsByPoint.keys()), airMap, flightsByPoint);
 
   return { runId, rows, routeCalls, errors, failures };
 }
 
-async function trackLandings(env, now, brAir, brFlights) {
+const destPointOf = (lat, lon) => WORLD_POINTS.find((p) => distKm(p.lat, p.lon, lat, lon) < WATCH_DEST_KM) || null;
+
+// Cada voo acompanhado é atualizado sempre que aparece em qualquer região consultada.
+// Quando a região do destino é consultada e ele não aparece mais:
+// - se foi visto perto do destino há pouco, pousou (o momento é estimado pela última posição);
+// - se nunca chegou perto, espera; passou 90 min do previsto, vira "perdido" (sem cobertura no fim da rota).
+async function trackLandings(env, now, queried, airMap, flightsByPoint) {
   const active = (await env.DB.prepare("SELECT * FROM watch WHERE status = 'active'").all()).results || [];
   const stmts = [];
   const watching = new Set();
+  const finish = (w, status, actual, err) =>
+    stmts.push(env.DB.prepare('UPDATE watch SET status = ?, actual_land = ?, error_min = ? WHERE hex = ? AND first_ts = ?').bind(status, actual, err, w.hex, w.first_ts));
 
   for (const w of active) {
-    watching.add(w.hex);
-    const a = brAir.get(w.hex);
+    const a = airMap.get(w.hex);
     if (a) {
+      watching.add(w.hex);
       stmts.push(
         env.DB.prepare('UPDATE watch SET last_seen = ?, last_dist_km = ?, last_alt = ?, last_gs = ? WHERE hex = ? AND first_ts = ?').bind(
-          now,
-          distKm(a.lat, a.lon, w.dest_lat, w.dest_lon),
-          a.alt_baro,
-          a.gs,
-          w.hex,
-          w.first_ts
+          now, distKm(a.lat, a.lon, w.dest_lat, w.dest_lon), a.alt_baro, a.gs, w.hex, w.first_ts
         )
       );
-    } else if (now - w.last_seen > LOST_AFTER_MS || now - w.first_ts > 12 * 3600000) {
-      // sumiu perto do destino: pousou. Como a coleta é a cada 10 min, o pouso é estimado
-      // a partir da última posição: distância que faltava, a 75% da velocidade (descida).
-      const landed = w.last_dist_km < LANDED_KM;
-      if (landed) {
-        const kmPerMin = (Math.max(w.last_gs || 0, 180) * 1.852 * 0.75) / 60;
-        const actual = w.last_seen + (w.last_dist_km / kmPerMin) * 60000;
-        const err = (actual - w.pred_land) / 60000;
-        stmts.push(
-          env.DB.prepare("UPDATE watch SET status = 'landed', actual_land = ?, error_min = ? WHERE hex = ? AND first_ts = ?").bind(
-            Math.round(actual),
-            err,
-            w.hex,
-            w.first_ts
-          )
-        );
-      } else {
-        stmts.push(env.DB.prepare("UPDATE watch SET status = 'lost' WHERE hex = ? AND first_ts = ?").bind(w.hex, w.first_ts));
-      }
+      continue;
+    }
+    if (!w.dest_point) { finish(w, 'lost', null, null); continue; } // acompanhamentos antigos, do modo Brasil
+    if (!queried.has(w.dest_point)) {
+      if (now > w.pred_land + 180 * 60000) finish(w, 'lost', null, null); else watching.add(w.hex);
+      continue;
+    }
+    // a região do destino foi consultada e o avião não apareceu
+    if (w.last_dist_km < RADIUS_KM && now - w.last_seen <= LANDED_WINDOW_MS) {
+      const kmPerMin = (Math.max(w.last_gs || 0, 180) * 1.852 * 0.75) / 60;
+      const actual = Math.min(now, w.last_seen + (w.last_dist_km / kmPerMin) * 60000);
+      finish(w, 'landed', Math.round(actual), (actual - w.pred_land) / 60000);
+    } else if (now > w.pred_land + 90 * 60000) {
+      finish(w, 'lost', null, null);
+    } else {
+      watching.add(w.hex); // ainda a caminho, fora da cobertura
     }
   }
 
-  // novos voos para acompanhar: destino dentro da cobertura, pouso entre 25 min e 4 h
-  let room = Math.min(WATCH_NEW_PER_RUN, WATCH_MAX_ACTIVE - active.length);
-  for (const f of brFlights.values()) {
-    if (room <= 0) break;
-    if (watching.has(f.hex) || f.eta < 25 || f.eta > 240) continue;
-    const near = BR_POINTS.some((p) => distKm(p.lat, p.lon, f.d.lat, f.d.lon) < WATCH_DEST_KM);
-    if (!near) continue;
-    const point = BR_POINTS.reduce((a, p) => (distKm(p.lat, p.lon, f.lat, f.lon) < distKm(a.lat, a.lon, f.lat, f.lon) ? p : a)).id;
+  // novos voos: destino dentro de uma das regiões; mais voos longos, que ainda não foram medidos
+  let room = WATCH_MAX_ACTIVE - watching.size;
+  let shortLeft = WATCH_SHORT_PER_RUN, longLeft = WATCH_LONG_PER_RUN;
+  const candidates = [];
+  for (const [pointId, flights] of flightsByPoint) for (const f of flights) candidates.push({ pointId, f });
+  candidates.sort((x, y) => y.f.eta - x.f.eta);
+  for (const { pointId, f } of candidates) {
+    if (room <= 0 || (shortLeft <= 0 && longLeft <= 0)) break;
+    if (watching.has(f.hex) || f.eta < 25 || f.eta > 900) continue;
+    const isLong = f.eta >= 90;
+    if (isLong ? longLeft <= 0 : shortLeft <= 0) continue;
+    const dp = destPointOf(f.d.lat, f.d.lon);
+    if (!dp) continue;
     stmts.push(
       env.DB.prepare(
-        "INSERT OR IGNORE INTO watch (hex, first_ts, point, callsign, orig, dest, dest_lat, dest_lon, eta_min, pred_land, last_seen, last_dist_km, last_alt, last_gs, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active')"
-      ).bind(f.hex, now, point, f.cs, f.o.iata || f.o.icao, f.d.iata || f.d.icao, f.d.lat, f.d.lon, f.eta, now + f.eta * 60000, now, f.remKm, f.alt, f.gs)
+        "INSERT OR IGNORE INTO watch (hex, first_ts, point, dest_point, callsign, orig, dest, dest_lat, dest_lon, eta_min, pred_land, last_seen, last_dist_km, last_alt, last_gs, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active')"
+      ).bind(f.hex, now, pointId, dp.id, f.cs, f.o.iata || f.o.icao, f.d.iata || f.d.icao, f.d.lat, f.d.lon, f.eta, now + f.eta * 60000, now, f.remKm, f.alt, f.gs)
     );
+    watching.add(f.hex);
     room--;
+    if (isLong) longLeft--; else shortLeft--;
   }
   if (stmts.length) await env.DB.batch(stmts);
 }
@@ -391,13 +406,14 @@ export async function computeStats(env, days = 7, now = Date.now()) {
     coherentPct: pct(p.coherent, p.routed),
     avgMs: p.ok ? Math.round(p.ms / p.ok) : null,
   }));
-  const order = ['BR', ...BR_POINTS.map((p) => p.id), ...WORLD_POINTS.map((p) => p.id)];
-  points.sort((a, b) => order.indexOf(a.point) - order.indexOf(b.point));
+  const order = [MUNDO, ...WORLD_POINTS.map((p) => p.id)];
+  const rank = (id) => (order.includes(id) ? order.indexOf(id) : 100);
+  points.sort((a, b) => rank(a.point) - rank(b.point));
 
-  // disponibilidade no Brasil por hora (horário de Brasília), média e pior caso
+  // disponibilidade no mundo por hora (horário de Brasília), média e pior caso
   const hours = Array.from({ length: 24 }, (_, h) => ({ h, n: 0, sum: {}, min: {} }));
   for (const r of ps) {
-    if (r.point !== 'BR' || r.status !== 'ok') continue;
+    if (r.point !== MUNDO || r.status !== 'ok') continue;
     const h = new Date(r.ts - 3 * 3600000).getUTCHours();
     const slot = hours.at(h);
     slot.n++;
@@ -414,14 +430,21 @@ export async function computeStats(env, days = 7, now = Date.now()) {
   }));
 
   // previsão de pouso
-  const landed = watch.filter((w) => w.status === 'landed');
+  const wm = watch.filter((w) => w.dest_point); // só o modo mundial
+  const landed = wm.filter((w) => w.status === 'landed');
+  const byEta = [[25, 60, '25–59 min'], [60, 90, '60–89 min'], [90, 180, '1h30–3h'], [180, 360, '3–6 h'], [360, 9999, '6 h+']].map(([lo, hi, label]) => {
+    const all = wm.filter((w) => w.eta_min >= lo && w.eta_min < hi && w.status !== 'active');
+    const e = landed.filter((w) => w.eta_min >= lo && w.eta_min < hi).map((w) => Math.abs(w.error_min)).sort((a, b) => a - b);
+    return { label, finished: all.length, landed: e.length, lost: all.length - e.length, medianAbs: quantile(e, 0.5), p90: quantile(e, 0.9), within10: pct(e.filter((x) => x <= 10).length, e.length) };
+  });
   const errs = landed.map((w) => w.error_min).sort((a, b) => a - b);
   const absErrs = errs.map(Math.abs).sort((a, b) => a - b);
   const landing = {
-    tracked: watch.length,
-    active: watch.filter((w) => w.status === 'active').length,
+    tracked: wm.length,
+    active: wm.filter((w) => w.status === 'active').length,
     landed: landed.length,
-    lost: watch.filter((w) => w.status === 'lost').length,
+    lost: wm.filter((w) => w.status === 'lost').length,
+    byEta,
     medianError: quantile(errs, 0.5),
     medianAbsError: quantile(absErrs, 0.5),
     p90AbsError: quantile(absErrs, 0.9),
@@ -476,7 +499,7 @@ export function renderStats(s, links = { json: '/stats.json', flights: '/flights
   const pointRows = s.points
     .map(
       (p) =>
-        `<tr${p.point === 'BR' ? ' class="hl"' : ''}><td>${esc(p.point === 'BR' ? 'Brasil (sem repetir)' : p.point)}</td><td>${p.runs}</td><td>${fmt(p.avgAirborne)}</td><td>${fmt(p.routedPct, '%')}</td><td>${fmt(p.coherentPct, '%')}</td><td>${fmt(p.avgCoherent)}</td><td>${fmt(p.failPct, '%')}</td><td>${fmt(p.avgMs, ' ms')}</td></tr>`
+        `<tr${p.point === MUNDO ? ' class="hl"' : ''}><td>${esc(p.point === MUNDO ? 'Mundo (soma, sem repetir)' : p.point)}</td><td>${p.runs}</td><td>${fmt(p.avgAirborne)}</td><td>${fmt(p.routedPct, '%')}</td><td>${fmt(p.coherentPct, '%')}</td><td>${fmt(p.avgCoherent)}</td><td>${fmt(p.failPct, '%')}</td><td>${fmt(p.avgMs, ' ms')}</td></tr>`
     )
     .join('');
   const days = Object.entries(s.quota.meteredPerDay)
@@ -501,15 +524,14 @@ th{color:#9AA1A9;font-weight:500}.hl td{color:#FFC629}.q{color:#6B727B}
 ${s.quota.keyConfigured ? '' : '<p class="warn">Sem chave do adsb.lol configurada. O IP do servidor é compartilhado, então a cota sem chave pode acabar por causa de outros usuários.</p>'}
 
 <div class="cards">
-<div class="card">Rotas coerentes (Brasil)<b>${fmt(s.points.find((p) => p.point === 'BR')?.coherentPct, '%')}</b></div>
-<div class="card">Voos prontos por coleta (Brasil)<b>${fmt(s.points.find((p) => p.point === 'BR')?.avgCoherent)}</b></div>
+<div class="card">Voos prontos no mundo (média)<b>${fmt(s.points.find((p) => p.point === MUNDO)?.avgCoherent)}</b></div>
 <div class="card">Erro típico do pouso<b>${fmt(L.medianAbsError, ' min')}</b></div>
 <div class="card">Pousos dentro de ±10 min<b>${fmt(L.within10, '%')}</b></div>
 <div class="card">Recusas por cota (429)<b>${s.quota.quotaHits}</b></div>
 </div>
 
 <h2>1. Tem voo para cada tempo de foco, a qualquer hora?</h2>
-<p>Voos no ar sobre o Brasil, por quanto falta para pousar. Vermelho = nenhum voo naquela faixa, amarelo = menos de 3.</p>
+<p>Voos no ar somando as 9 regiões (a última foto de cada uma, com até 40 min), por quanto falta para pousar. Vermelho = nenhum voo naquela faixa, amarelo = menos de 3.</p>
 <p><b>Pior caso</b> de cada hora (o momento com menos opções):</p>
 <table><tr><th>Hora</th>${head}<th>amostras</th></tr>${hourRows('min')}</table>
 <p><b>Média</b> de cada hora:</p>
@@ -520,19 +542,21 @@ ${s.quota.keyConfigured ? '' : '<p class="warn">Sem chave do adsb.lol configurad
 <table><tr><th>Região</th><th>coletas</th><th>no ar</th><th>com rota</th><th>coerentes</th><th>voos prontos</th><th>falhas</th><th>tempo</th></tr>${pointRows}</table>
 
 <h2>3. O avião pousa quando dissemos?</h2>
-<p>Voos sobre o Brasil acompanhados do primeiro avistamento até sumirem perto do destino. Erro = pouso real menos o previsto. Como a coleta é a cada 10 min, o momento do pouso é estimado a partir da última posição vista. "Perdidos" sumiram a mais de 200 km do destino: falha de cobertura ou rota errada.</p>
+<p>Voos de qualquer região, com destino dentro de uma das 9, acompanhados do primeiro avistamento até sumirem perto do destino. Erro = pouso real menos o previsto no primeiro avistamento. Cada região é vista a cada 30 min, então o pouso é estimado pela última posição perto do destino. "Perdidos" não foram vistos chegando: falta de cobertura no fim da rota ou rota errada.</p>
 <div class="cards">
 <div class="card">Acompanhados<b>${L.tracked}</b></div>
 <div class="card">Pousaram<b>${L.landed}</b></div>
-<div class="card">Perdidos (sumiram a mais de 200 km)<b>${L.lost}</b></div>
+<div class="card">Perdidos<b>${L.lost}</b></div>
 <div class="card">Ainda no ar<b>${L.active}</b></div>
 <div class="card">Viés mediano<b>${fmt(L.medianError, ' min')}</b></div>
 <div class="card">90% erram até<b>${fmt(L.p90AbsError, ' min')}</b></div>
 </div>
+<p>Por duração prevista no primeiro avistamento:</p>
+<table><tr><th>Previsão</th><th>finalizados</th><th>pousaram</th><th>perdidos</th><th>erro típico</th><th>90% até</th><th>dentro de ±10 min</th></tr>${L.byEta.map((r) => `<tr><td>${r.label}</td><td>${r.finished}</td><td>${r.landed}</td><td>${r.lost}</td><td>${fmt(r.medianAbs, ' min')}</td><td>${fmt(r.p90, ' min')}</td><td>${fmt(r.within10, '%')}</td></tr>`).join('')}</table>
 ${worst ? `<p>Maiores erros:</p><table><tr><th>Voo</th><th>Rota</th><th>Previsão</th><th>Erro</th></tr>${worst}</table>` : ''}
 
 <h2>4. Cota do adsb.lol</h2>
-<p>Chamadas que contam na cota, por dia. O plano deve ficar em 576 por dia (4 por coleta).</p>
+<p>Chamadas que contam na cota, por dia. O plano deve ficar em 432 por dia (3 por coleta).</p>
 <table><tr><th>Dia</th><th>chamadas</th></tr>${days || '<tr><td>—</td><td>—</td></tr>'}</table>
 
 <footer>${ATTRIBUTION} · <a style="color:#5CC8FF" href="${links.json}">números em JSON</a> · <a style="color:#5CC8FF" href="${links.flights}">lista de voos</a></footer>

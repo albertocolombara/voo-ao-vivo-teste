@@ -7,15 +7,15 @@ Roda no **GitHub Actions** (de graça em repositório público) e publica um pai
 
 A cada 10 minutos ele:
 
-1. consulta 3 regiões do Brasil e 1 região do mundo (em rodízio entre 8);
+1. consulta 3 de 9 regiões do mundo, em rodízio (Londres–Paris, Nova York, Tóquio, Frankfurt, Los Angeles, Sydney, Dubai, Chicago, São Paulo). Cada região é atualizada a cada 30 minutos;
 2. busca a rota de cada avião na base aberta do Virtual Radar Server (baixada uma vez por dia) e descarta as rotas que não batem com a posição e o rumo;
-3. calcula quando cada voo pousa e conta quantos há em cada faixa de tempo de foco;
-4. acompanha alguns voos brasileiros até o pouso para medir o erro da previsão;
+3. soma a última foto de cada região (com até 40 min) e conta quantos voos há no mundo em cada faixa de tempo de foco;
+4. acompanha voos de qualquer região até o pouso, com prioridade para voos longos, para medir o erro da previsão;
 5. salva as medições na pasta `data/` do próprio repositório.
 
 Uma vez por hora, ele atualiza o painel.
 
-São 4 chamadas por coleta ao adsb.lol, no máximo **576 por dia**, dentro da chave gratuita (1.000 por dia).
+São 3 chamadas por coleta ao adsb.lol, no máximo **432 por dia**, abaixo do limite sem chave (500 por dia). Com a chave (1.000 por dia), dá para dobrar o número de regiões.
 
 ## Do que você precisa
 
@@ -42,14 +42,13 @@ Na mesma pasta estão `stats.json` (os números) e `flights.json` (a lista de vo
 
 | Pergunta | Onde olhar | Bom sinal |
 |---|---|---|
-| Tem voo para cada tempo de foco a qualquer hora? | Tabela "Pior caso" | Sem vermelho nas faixas 25–49, 50–89 e 90–179 min, principalmente de madrugada |
+| Tem voo para cada tempo de foco a qualquer hora? | Tabela "Pior caso" (soma do mundo) | Sem vermelho em nenhuma faixa, em nenhuma hora |
 | As rotas são confiáveis? | "Rotas coerentes (Brasil)" | 75% ou mais |
-| O pouso acontece quando dissemos? | "Pousos dentro de ±10 min" | 80% ou mais |
+| O pouso acontece quando dissemos? | Tabela "Por duração prevista" | 80% ou mais dentro de ±10 min, inclusive nos voos longos |
 | A cobertura aguenta? | "Perdidos" | Bem menos que "Pousaram" |
 | A API aguenta? | "Recusas por cota" e "falhas" | Perto de zero |
 
-Os limites de "bom sinal" são pontos de partida, não regras. Se a madrugada vier vazia no Brasil, a resposta pode ser mostrar voos do mundo nesse horário (a tabela das regiões do mundo ajuda a decidir).
-
+Os limites de "bom sinal" são pontos de partida, não regras. 
 ## Quando terminar
 
 Para parar: aba *Actions → Coleta de voos → ⋯ → Disable workflow*. Os dados continuam na pasta `data/`.
@@ -58,9 +57,9 @@ Para parar: aba *Actions → Coleta de voos → ⋯ → Disable workflow*. Os da
 
 - O GitHub não garante o horário dos agendamentos: em momentos de muito uso, uma coleta pode atrasar ou ser pulada. O painel mostra quantas amostras cada hora teve.
 - O repositório é público, então os dados coletados também são. Eles só têm números de voo, que já são públicos, e contagens. A chave do adsb.lol fica guardada como segredo e não aparece.
-- O pouso é estimado a partir da última posição vista, porque a coleta é a cada 10 minutos.
 - "Perdidos" mistura falha de cobertura com rota errada que passou no filtro.
-- As regiões do mundo só são consultadas a cada 80 minutos; servem para ter ordem de grandeza.
+- Cada região é vista a cada 30 minutos, então o pouso é estimado pela última posição vista perto do destino. Voos sem receptor no fim da rota aparecem como "perdidos".
+- `flights.json` só traz os voos das 3 regiões da última coleta.
 - A previsão inclui 8 minutos fixos para aproximação e pouso. Se o viés mediano ficar longe de zero, ajuste esse valor em `etaMin`, no arquivo `src/index.js`.
 - `flights.json` é atualizado uma vez por hora, então serve para conferir o formato, não para uso real.
 

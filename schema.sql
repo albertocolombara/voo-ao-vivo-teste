@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS watch (
   hex TEXT NOT NULL,
   first_ts INTEGER NOT NULL,
   point TEXT NOT NULL,
+  dest_point TEXT,               -- região que contém o destino
   callsign TEXT,
   orig TEXT,
   dest TEXT,
