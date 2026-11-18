@@ -1,9 +1,7 @@
 name: Coleta de voos
 
 on:
-  schedule:
-    # a cada 10 min, fora do minuto cheio (o GitHub atrasa mais os agendamentos na hora cheia) - ok
-    - cron: '3-59/10 * * * *'
+  # Sem agendamento do GitHub: ele disparava raramente e gerava coletas duplicadas.
   # disparo manual (botão Run workflow) e externo (cron-job.org, a cada 10 min).
   # O disparo externo manda publicar=false, para o painel continuar sendo publicado 1x por hora.
   workflow_dispatch:

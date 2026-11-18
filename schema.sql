@@ -47,6 +47,10 @@ CREATE TABLE IF NOT EXISTS watch (
   dest_lat REAL,
   dest_lon REAL,
   eta_min REAL,                   -- previsão no primeiro avistamento
+  eta_ver INTEGER,                -- versão da fórmula de previsão
+  first_rem_km REAL,              -- distância até o destino no primeiro avistamento
+  first_alt INTEGER,              -- altitude no primeiro avistamento
+  first_gs REAL,                  -- velocidade no primeiro avistamento
   pred_land INTEGER,              -- epoch ms previsto para o pouso
   last_seen INTEGER,
   last_dist_km REAL,

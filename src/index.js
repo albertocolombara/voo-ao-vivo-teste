@@ -38,7 +38,7 @@ const BUCKETS = [
 ];
 const WATCH_SHORT_PER_RUN = 3; // voos com pouso em menos de 90 min
 const WATCH_LONG_PER_RUN = 5; // voos de 90 min ou mais (o que ainda falta medir)
-const WATCH_MAX_ACTIVE = 300;
+const WATCH_MAX_ACTIVE = 500; // inclui os da versão 1 ainda no ar
 const WATCH_DEST_KM = 400; // só acompanha voos cujo destino fica dentro de uma das 9 regiões
 const LANDED_WINDOW_MS = 45 * 60000; // visto perto do destino há até 45 min e sumiu = pousou
 const ATTRIBUTION = 'Dados de voo: adsb.lol (ODbL 1.0) · Rotas: Virtual Radar Server Standing Data (CC0 1.0)';
@@ -97,11 +97,23 @@ function matchLeg(route, ac) {
   return { routed: true, leg: okRatio && okHeading ? best : null };
 }
 
-const etaMin = (remKm, gs) => (remKm / (gs * 1.852)) * 60 + 8;
+// Previsão de pouso (versão 2).
+// Versão 1 usava só a velocidade atual: logo após a decolagem o avião ainda está subindo e lento,
+// e a previsão de voos longos saía muito maior que a real (6 h+: erro típico de 50 min, quase sempre para mais).
+// Versão 2: longe do destino, se o avião ainda não está em cruzeiro, usa uma velocidade de cruzeiro típica.
+// Em cruzeiro, mantém a velocidade atual, que já inclui o vento.
+const ETA_VERSION = 2;
+const CRUISE_KT = 470;
+function etaMin(remKm, gs, alt) {
+  let speed = gs;
+  const cruising = typeof alt === 'number' && alt >= 25000 && gs >= 380;
+  if (remKm > 300 && !cruising) speed = Math.max(gs, CRUISE_KT);
+  return (remKm / (speed * 1.852)) * 60 + 8;
+}
 const bucketOf = (eta) => (BUCKETS.find(([, lo, hi]) => eta >= lo && eta < hi) || [null])[0];
 
 function toFlight(ac, route, leg) {
-  const eta = etaMin(leg.pd, ac.gs);
+  const eta = etaMin(leg.pd, ac.gs, ac.alt_baro);
   return {
     hex: ac.hex,
     cs: ac.flight.trim(),
@@ -333,8 +345,8 @@ async function trackLandings(env, now, queried, airMap, flightsByPoint) {
     if (!dp) continue;
     stmts.push(
       env.DB.prepare(
-        "INSERT OR IGNORE INTO watch (hex, first_ts, point, dest_point, callsign, orig, dest, dest_lat, dest_lon, eta_min, pred_land, last_seen, last_dist_km, last_alt, last_gs, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active')"
-      ).bind(f.hex, now, pointId, dp.id, f.cs, f.o.iata || f.o.icao, f.d.iata || f.d.icao, f.d.lat, f.d.lon, f.eta, now + f.eta * 60000, now, f.remKm, f.alt, f.gs)
+        "INSERT OR IGNORE INTO watch (hex, first_ts, point, dest_point, callsign, orig, dest, dest_lat, dest_lon, eta_min, eta_ver, first_rem_km, first_alt, first_gs, pred_land, last_seen, last_dist_km, last_alt, last_gs, status) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'active')"
+      ).bind(f.hex, now, pointId, dp.id, f.cs, f.o.iata || f.o.icao, f.d.iata || f.d.icao, f.d.lat, f.d.lon, f.eta, ETA_VERSION, f.remKm, f.alt, f.gs, now + f.eta * 60000, now, f.remKm, f.alt, f.gs)
     );
     watching.add(f.hex);
     room--;
@@ -430,7 +442,7 @@ export async function computeStats(env, days = 7, now = Date.now()) {
   }));
 
   // previsão de pouso
-  const wm = watch.filter((w) => w.dest_point); // só o modo mundial
+  const wm = watch.filter((w) => w.dest_point && w.eta_ver === ETA_VERSION); // modo mundial, versão atual da previsão
   const landed = wm.filter((w) => w.status === 'landed');
   const byEta = [[25, 60, '25–59 min'], [60, 90, '60–89 min'], [90, 180, '1h30–3h'], [180, 360, '3–6 h'], [360, 9999, '6 h+']].map(([lo, hi, label]) => {
     const all = wm.filter((w) => w.eta_min >= lo && w.eta_min < hi && w.status !== 'active');
@@ -485,6 +497,7 @@ function heat(v) {
   return 'background:#143322;color:#3DDC84';
 }
 
+const ETA_VERSION_LABEL = ETA_VERSION;
 export function renderStats(s, links = { json: '/stats.json', flights: '/flights' }) {
   const L = s.landing;
   const labels = { b25: '25–49 min', b50: '50–89', b90: '90–179', b180: '3–6 h', b360: '6 h+' };
@@ -541,7 +554,7 @@ ${s.quota.keyConfigured ? '' : '<p class="warn">Sem chave do adsb.lol configurad
 <p>"Com rota" = o adsb.lol sabe origem e destino. "Coerentes" = a rota bate com a posição e o rumo do avião.</p>
 <table><tr><th>Região</th><th>coletas</th><th>no ar</th><th>com rota</th><th>coerentes</th><th>voos prontos</th><th>falhas</th><th>tempo</th></tr>${pointRows}</table>
 
-<h2>3. O avião pousa quando dissemos?</h2>
+<h2>3. O avião pousa quando dissemos? (previsão versão ${ETA_VERSION_LABEL})</h2>
 <p>Voos de qualquer região, com destino dentro de uma das 9, acompanhados do primeiro avistamento até sumirem perto do destino. Erro = pouso real menos o previsto no primeiro avistamento. Cada região é vista a cada 30 min, então o pouso é estimado pela última posição perto do destino. "Perdidos" não foram vistos chegando: falta de cobertura no fim da rota ou rota errada.</p>
 <div class="cards">
 <div class="card">Acompanhados<b>${L.tracked}</b></div>
