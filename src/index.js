@@ -10,9 +10,9 @@ const API = 'https://api.adsb.lol';
 const RADIUS_NM = 250;
 const SPACING_MS = 2500; // pausa entre chamadas que contam na cota (evita 429)
 
-// Modo mundial: 9 regiões espalhadas pelos fusos horários, em 3 grupos.
-// Cada execução (a cada 10 min) consulta um grupo de 3, então cada região é atualizada a cada 30 min.
-// 3 chamadas por execução = 432 por dia, abaixo do limite sem chave (500).
+// Modo mundial: regiões espalhadas pelos fusos horários, consultadas em rodízio a cada execução (10 min).
+// Sem chave (500 chamadas/dia): 9 regiões, 3 por execução -> cada região a cada 30 min, 432/dia.
+// Com chave (1.000/dia, 300/h): 12 regiões, 6 por execução -> cada região a cada 20 min, 864/dia (36/h).
 const WORLD_POINTS = [
   { id: 'Londres-Paris', lat: 50.5, lon: 0.5 },
   { id: 'Nova York', lat: 40.6, lon: -73.8 },
@@ -23,8 +23,13 @@ const WORLD_POINTS = [
   { id: 'Dubai', lat: 25.2, lon: 55.4 },
   { id: 'Chicago', lat: 41.9, lon: -87.9 },
   { id: 'São Paulo', lat: -23.0, lon: -46.0 },
+  // só com chave
+  { id: 'Istambul', lat: 41.0, lon: 28.9 },
+  { id: 'Singapura', lat: 1.4, lon: 103.9 },
+  { id: 'Dallas-Atlanta', lat: 33.3, lon: -90.5 },
 ];
-const GROUPS = 3;
+const plan = (env) =>
+  env.ADSBLOL_KEY ? { points: WORLD_POINTS, groups: 2 } : { points: WORLD_POINTS.slice(0, 9), groups: 3 };
 const MUNDO = 'MUNDO';
 const FRESH_MS = 40 * 60000; // fotos de região com até 40 min entram na soma mundial
 const RADIUS_KM = RADIUS_NM * 1.852;
@@ -192,8 +197,9 @@ function emptyStats() {
 // ---------- coleta (cron) ----------
 export async function collect(env, now = Date.now()) {
   const t0 = Date.now();
-  const slot = Math.floor(now / 600000) % GROUPS;
-  const points = WORLD_POINTS.filter((_, i) => i % GROUPS === slot);
+  const { points: all, groups } = plan(env);
+  const slot = Math.floor(now / 600000) % groups;
+  const points = all.filter((_, i) => i % groups === slot);
 
   // 1. aviões por região (chamadas que contam na cota)
   const raw = [];
@@ -203,6 +209,7 @@ export async function collect(env, now = Date.now()) {
     const r = await fetchPoint(env, points[i]);
     if (r.status !== 'ok') errors++;
     raw.push({ point: points[i], ...r, air: r.ac.filter(airborne) });
+    if (r.status === 'quota') break; // recusas repetidas podem revogar a chave: para e tenta na próxima execução
   }
 
   // 2. rotas, sem repetir indicativo
@@ -569,7 +576,7 @@ ${s.quota.keyConfigured ? '' : '<p class="warn">Sem chave do adsb.lol configurad
 ${worst ? `<p>Maiores erros:</p><table><tr><th>Voo</th><th>Rota</th><th>Previsão</th><th>Erro</th></tr>${worst}</table>` : ''}
 
 <h2>4. Cota do adsb.lol</h2>
-<p>Chamadas que contam na cota, por dia. O plano deve ficar em 432 por dia (3 por coleta).</p>
+<p>Chamadas que contam na cota, por dia. Sem chave, 432 por dia (3 por coleta). Com chave, 864 por dia (6 por coleta), dentro do limite de 1.000.</p>
 <table><tr><th>Dia</th><th>chamadas</th></tr>${days || '<tr><td>—</td><td>—</td></tr>'}</table>
 
 <footer>${ATTRIBUTION} · <a style="color:#5CC8FF" href="${links.json}">números em JSON</a> · <a style="color:#5CC8FF" href="${links.flights}">lista de voos</a></footer>
