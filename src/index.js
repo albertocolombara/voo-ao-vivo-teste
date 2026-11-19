@@ -102,20 +102,26 @@ function matchLeg(route, ac) {
   return { routed: true, leg: okRatio && okHeading ? best : null };
 }
 
-// Previsão de pouso (versão 2).
-// Versão 1 usava só a velocidade atual: logo após a decolagem o avião ainda está subindo e lento,
-// e a previsão de voos longos saía muito maior que a real (6 h+: erro típico de 50 min, quase sempre para mais).
-// Versão 2: longe do destino, se o avião ainda não está em cruzeiro, usa uma velocidade de cruzeiro típica.
-// Em cruzeiro, mantém a velocidade atual, que já inclui o vento.
-const ETA_VERSION = 2;
-const CRUISE_KT = 470;
+// Previsão de pouso (versão 3).
+// v1: só a velocidade atual. Logo após a decolagem o avião ainda está subindo e lento,
+//     e voos longos saíam muito maiores que o real (6 h+: erro típico de ~56 min).
+// v2: longe do destino e fora de cruzeiro, usa velocidade de cruzeiro típica (470 kt).
+//     6 h+ caiu para ~37 min; até 1h30 ficou ~3-4 min.
+// v3: para mais de 2.500 km restantes, parâmetros ajustados em 896 pousos reais
+//     (metade para ajustar, metade para conferir): em cruzeiro, média entre a velocidade atual
+//     e 440 kt (amortece ventos de cauda fortes); fora de cruzeiro, no mínimo 440 kt.
+//     No teste, 6 h+ caiu de ~32 para ~24 min. Até 2.500 km, segue igual à v2.
+const ETA_VERSION = 3;
 function etaMin(remKm, gs, alt) {
-  let speed = gs;
   const cruising = typeof alt === 'number' && alt >= 25000 && gs >= 380;
-  if (remKm > 300 && !cruising) speed = Math.max(gs, CRUISE_KT);
+  if (remKm > 2500) {
+    const speed = cruising ? 0.5 * gs + 0.5 * 440 : Math.max(gs, 440);
+    return ((0.98 * remKm) / (speed * 1.852)) * 60 + 5;
+  }
+  let speed = gs;
+  if (remKm > 300 && !cruising) speed = Math.max(gs, 470);
   return (remKm / (speed * 1.852)) * 60 + 8;
-}
-const bucketOf = (eta) => (BUCKETS.find(([, lo, hi]) => eta >= lo && eta < hi) || [null])[0];
+}const bucketOf = (eta) => (BUCKETS.find(([, lo, hi]) => eta >= lo && eta < hi) || [null])[0];
 
 function toFlight(ac, route, leg) {
   const eta = etaMin(leg.pd, ac.gs, ac.alt_baro);
@@ -313,6 +319,16 @@ async function trackLandings(env, now, queried, airMap, flightsByPoint) {
     const a = airMap.get(w.hex);
     if (a) {
       watching.add(w.hex);
+      // primeira vez que aparece depois da metade do tempo previsto: guarda a previsão desse momento,
+      // que é a que o usuário veria no meio do voo
+      if (!w.mid_ts && now - w.first_ts >= (w.pred_land - w.first_ts) / 2) {
+        const remKm = distKm(a.lat, a.lon, w.dest_lat, w.dest_lon);
+        stmts.push(
+          env.DB.prepare('UPDATE watch SET mid_ts = ?, mid_rem_km = ?, mid_pred_land = ? WHERE hex = ? AND first_ts = ?').bind(
+            now, remKm, Math.round(now + etaMin(remKm, a.gs, a.alt_baro) * 60000), w.hex, w.first_ts
+          )
+        );
+      }
       stmts.push(
         env.DB.prepare('UPDATE watch SET last_seen = ?, last_dist_km = ?, last_alt = ?, last_gs = ? WHERE hex = ? AND first_ts = ?').bind(
           now, distKm(a.lat, a.lon, w.dest_lat, w.dest_lon), a.alt_baro, a.gs, w.hex, w.first_ts
@@ -454,7 +470,8 @@ export async function computeStats(env, days = 7, now = Date.now()) {
   const byEta = [[25, 60, '25–59 min'], [60, 90, '60–89 min'], [90, 180, '1h30–3h'], [180, 360, '3–6 h'], [360, 9999, '6 h+']].map(([lo, hi, label]) => {
     const all = wm.filter((w) => w.eta_min >= lo && w.eta_min < hi && w.status !== 'active');
     const e = landed.filter((w) => w.eta_min >= lo && w.eta_min < hi).map((w) => Math.abs(w.error_min)).sort((a, b) => a - b);
-    return { label, finished: all.length, landed: e.length, lost: all.length - e.length, medianAbs: quantile(e, 0.5), p90: quantile(e, 0.9), within10: pct(e.filter((x) => x <= 10).length, e.length) };
+    const m = landed.filter((w) => w.eta_min >= lo && w.eta_min < hi && w.mid_pred_land).map((w) => Math.abs(w.actual_land - w.mid_pred_land) / 60000).sort((a, b) => a - b);
+    return { label, finished: all.length, landed: e.length, lost: all.length - e.length, medianAbs: quantile(e, 0.5), p90: quantile(e, 0.9), within10: pct(e.filter((x) => x <= 10).length, e.length), midN: m.length, midMedianAbs: quantile(m, 0.5) };
   });
   const errs = landed.map((w) => w.error_min).sort((a, b) => a - b);
   const absErrs = errs.map(Math.abs).sort((a, b) => a - b);
@@ -572,7 +589,7 @@ ${s.quota.keyConfigured ? '' : '<p class="warn">Sem chave do adsb.lol configurad
 <div class="card">90% erram até<b>${fmt(L.p90AbsError, ' min')}</b></div>
 </div>
 <p>Por duração prevista no primeiro avistamento:</p>
-<table><tr><th>Previsão</th><th>finalizados</th><th>pousaram</th><th>perdidos</th><th>erro típico</th><th>90% até</th><th>dentro de ±10 min</th></tr>${L.byEta.map((r) => `<tr><td>${r.label}</td><td>${r.finished}</td><td>${r.landed}</td><td>${r.lost}</td><td>${fmt(r.medianAbs, ' min')}</td><td>${fmt(r.p90, ' min')}</td><td>${fmt(r.within10, '%')}</td></tr>`).join('')}</table>
+<table><tr><th>Previsão</th><th>finalizados</th><th>pousaram</th><th>perdidos</th><th>erro típico</th><th>90% até</th><th>dentro de ±10 min</th><th>erro típico no meio do voo</th></tr>${L.byEta.map((r) => `<tr><td>${r.label}</td><td>${r.finished}</td><td>${r.landed}</td><td>${r.lost}</td><td>${fmt(r.medianAbs, ' min')}</td><td>${fmt(r.p90, ' min')}</td><td>${fmt(r.within10, '%')}</td><td>${fmt(r.midMedianAbs, ' min')} (${r.midN})</td></tr>`).join('')}</table>
 ${worst ? `<p>Maiores erros:</p><table><tr><th>Voo</th><th>Rota</th><th>Previsão</th><th>Erro</th></tr>${worst}</table>` : ''}
 
 <h2>4. Cota do adsb.lol</h2>
