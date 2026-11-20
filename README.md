@@ -63,6 +63,14 @@ Para parar: aba *Actions → Coleta de voos → ⋯ → Disable workflow*. Os da
 - A previsão inclui 8 minutos fixos para aproximação e pouso. Se o viés mediano ficar longe de zero, ajuste esse valor em `etaMin`, no arquivo `src/index.js`.
 - `flights.json` é atualizado uma vez por hora, então serve para conferir o formato, não para uso real.
 
+## Nuvens reais (workflow "Nuvens")
+
+A cada 3 h, `nuvens/gerar.py` baixa do NASA GIBS a máscara de nuvens do VIIRS (NOAA-20) de hoje e de ontem, de dia e de noite, e publica no R2 (bucket dos blocos) as nuvens do mundo inteiro para a janela do Termi:
+
+- `nuvens/dia/{linha}/{coluna}.webp` e `nuvens/noite/{linha}/{coluna}.webp`: 20 × 10 blocos de 512 px (18° cada, ~4 km por pixel), cinza (0 = céu limpo, 255 = nuvem). Hoje onde já há passagem, ontem no resto.
+- `nuvens/indice.json`: versão e datas usadas. O app pede os blocos com `?v=` dessa versão.
+- Os nomes não mudam: cada atualização sobrescreve a anterior e o espaço fica em ~22 MB.
+
 ## Rodar no seu computador (opcional)
 
 Com Node.js 22 ou mais novo:
