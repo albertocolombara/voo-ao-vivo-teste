@@ -63,7 +63,7 @@ if (r2) {
   const publicaveis = new Map([...result.flightsByPoint].filter(([p]) => !vazias.has(p)));
   const { indice, falhas } = await publicarNoR2(r2, publicaveis, now, ATTRIBUTION, state.indiceR2);
   state.indiceR2 = indice;
-  r2Resumo = `R2: ${publicaveis.size - falhas.filter((f) => !f.includes('indice')).length}/${result.flightsByPoint.size} regiões enviadas`;
+  r2Resumo = `R2: ${publicaveis.size - falhas.filter((f) => !f.includes('indice') && !f.startsWith('histórico')).length}/${result.flightsByPoint.size} regiões enviadas`;
   if (vazias.size) r2Resumo += ` · sem aviões na resposta (mantidas): ${[...vazias].join(', ')}`;
   if (falhas.length) r2Resumo += `\nERROS R2:\n${falhas.join('\n')}`;
 }

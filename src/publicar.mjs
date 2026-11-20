@@ -51,17 +51,36 @@ export function arquivoDaRegiao(regiao, voos, agora, atribuicao) {
   };
 }
 
+/**
+ * Faixa de 20 min do dia (UTC) para o histórico do "voo de ontem" (RN-12): "1540" para 15:47.
+ * Cada região é coletada a cada 20 min, então cada faixa recebe uma coleta por dia e é
+ * sobrescrita 24 h depois. Se a coleta parar, o arquivo da faixa continua sendo o de ontem.
+ */
+export const faixaDoDia = (agora) => {
+  const d = new Date(agora);
+  const min = Math.floor(d.getUTCMinutes() / 20) * 20;
+  return String(d.getUTCHours()).padStart(2, '0') + String(min).padStart(2, '0');
+};
+
 /** Envia os arquivos das regiões coletadas agora e atualiza o índice. Erros não param a coleta. */
 export async function publicarNoR2(r2, flightsByPoint, agora, atribuicao, indiceAnterior = {}) {
   const indice = { ...indiceAnterior };
   const falhas = [];
   for (const [regiao, voos] of flightsByPoint) {
     const arq = arquivoDaRegiao(regiao, voos, agora, atribuicao);
+    const corpo = JSON.stringify(arq);
     try {
-      await r2.enviar(`voos/${arq.regiao}.json`, JSON.stringify(arq));
+      await r2.enviar(`voos/${arq.regiao}.json`, corpo);
       indice[arq.regiao] = { nome: regiao, coletadoEm: arq.coletadoEm, voos: arq.voos.length };
     } catch (e) {
       falhas.push(String(e.message || e));
+      continue;
+    }
+    // cópia para o "voo de ontem": lida pelo app só quando os dados ao vivo estão fora do ar
+    try {
+      await r2.enviar(`historico/${arq.regiao}/${faixaDoDia(agora)}.json`, corpo, { cacheControl: 'public, max-age=600' });
+    } catch (e) {
+      falhas.push('histórico: ' + String(e.message || e));
     }
   }
   if (Object.keys(indice).length) {
