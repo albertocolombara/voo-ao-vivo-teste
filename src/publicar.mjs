@@ -2,7 +2,16 @@
 // Formato em teste: ARCHITECTURE.md §9 do termi-app ("Contrato do cache de voos", [Proposta]).
 // Só vira contrato depois de aprovado pelo Alberto.
 
+import fs from 'node:fs';
+
 export const VERSAO = 1;
+
+// Código ICAO da companhia -> país (ISO 3166-1 alfa-2). Gerado por scripts/gerar-companhias.mjs (OpenFlights, ODbL).
+const COMPANHIAS = JSON.parse(fs.readFileSync(new URL('./companhias.json', import.meta.url), 'utf8'));
+
+/** País da companhia pelo código da rota ou, sem ele, pelas 3 primeiras letras do indicativo. */
+export const paisDaCompanhia = (codigo, callsign) =>
+  COMPANHIAS[codigo] ?? COMPANHIAS[String(callsign || '').slice(0, 3).toUpperCase()] ?? null;
 
 /** "Londres-Paris" -> "londres-paris"; "São Paulo" -> "sao-paulo". */
 export const slug = (s) =>
@@ -27,7 +36,7 @@ export function arquivoDaRegiao(regiao, voos, agora, atribuicao) {
       hex: f.hex,
       callsign: f.cs,
       companhia: f.airline,
-      companhiaPais: null, // falta o mapa companhia -> país (ROADMAP, Fase 2)
+      companhiaPais: paisDaCompanhia(f.airline, f.cs),
       aeronave: f.type,
       origem: aeroporto(f.o),
       destino: aeroporto(f.d),

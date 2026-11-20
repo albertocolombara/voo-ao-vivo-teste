@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assinar } from '../src/r2.mjs';
-import { arquivoDaRegiao, slug } from '../src/publicar.mjs';
+import { arquivoDaRegiao, slug, paisDaCompanhia } from '../src/publicar.mjs';
 
 // Exemplo oficial da AWS (S3, "GET Object", Signature V4)
 test('assinatura SigV4 confere com o exemplo da AWS', () => {
@@ -36,4 +36,11 @@ test('arquivo da região no formato do app', () => {
   assert.equal(arq.coletadoEm, '2026-11-19T15:40:00.000Z');
   assert.equal(arq.voos[0].pousoPrevistoEm, '2026-11-19T16:52:00.000Z');
   assert.equal(arq.voos[0].destino.iata, 'LGW');
+  assert.equal(arq.voos[0].companhiaPais, 'IE');
+});
+
+test('país da companhia', () => {
+  assert.equal(paisDaCompanhia('TAM', 'TAM3300'), 'BR');
+  assert.equal(paisDaCompanhia(null, 'KAL017'), 'KR');
+  assert.equal(paisDaCompanhia(null, 'N123AB'), null);
 });
