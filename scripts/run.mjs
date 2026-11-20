@@ -7,7 +7,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb } from '../src/db.mjs';
-import { collect, computeStats, renderStats, flightsResponse } from '../src/index.js';
+import { collect, computeStats, renderStats, flightsResponse, ATTRIBUTION } from '../src/index.js';
+import { criarR2 } from '../src/r2.mjs';
+import { publicarNoR2 } from '../src/publicar.mjs';
 import { createVrsRoutes } from '../src/routes-vrs.mjs';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,6 +53,16 @@ if (fs.existsSync(sdDir)) {
 }
 const result = await collect(env, now);
 
+// 2b. publica os voos no R2 para o app (só se os segredos R2_* existirem)
+const r2 = criarR2();
+let r2Resumo = 'R2: sem credenciais';
+if (r2) {
+  const { indice, falhas } = await publicarNoR2(r2, result.flightsByPoint, now, ATTRIBUTION, state.indiceR2);
+  state.indiceR2 = indice;
+  r2Resumo = `R2: ${result.flightsByPoint.size - falhas.filter((f) => !f.includes('indice')).length}/${result.flightsByPoint.size} regiões enviadas`;
+  if (falhas.length) r2Resumo += `\nERROS R2:\n${falhas.join('\n')}`;
+}
+
 // 3. grava o que é novo
 const lines = [
   ...all('SELECT * FROM runs WHERE id > ?', maxRun).map((r) => ({ k: 'run', ...r })),
@@ -82,5 +94,5 @@ const pts = result.rows.map((r) => `${r.point}: ${r.status} ${r.coherent}/${r.ai
 if (vrs) console.log(`rotas: base VRS · ${vrs.stats.asked} indicativos · ${vrs.stats.found} com rota · ${vrs.stats.notAirline} sem formato de companhia · ${vrs.stats.missingAirport} com aeroporto desconhecido`);
 else console.log('rotas: routeset do adsb.lol');
 if (result.failures?.length) console.log('ERROS:\n' + result.failures.join('\n'));
-console.log(`coleta ${result.runId} · rotas ${result.routeCalls} chamadas · erros ${result.errors}\n${pts}\npainel: ${publish ? 'gerado' : 'não'}`);
+console.log(`coleta ${result.runId} · rotas ${result.routeCalls} chamadas · erros ${result.errors}\n${pts}\npainel: ${publish ? 'gerado' : 'não'}\n${r2Resumo}`);
 if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `publish=${publish}\n`);

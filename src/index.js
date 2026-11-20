@@ -46,7 +46,7 @@ const WATCH_LONG_PER_RUN = 5; // voos de 90 min ou mais (o que ainda falta medir
 const WATCH_MAX_ACTIVE = 500; // inclui os da versão 1 ainda no ar
 const WATCH_DEST_KM = 400; // só acompanha voos cujo destino fica dentro de uma das 9 regiões
 const LANDED_WINDOW_MS = 45 * 60000; // visto perto do destino há até 45 min e sumiu = pousou
-const ATTRIBUTION = 'Dados de voo: adsb.lol (ODbL 1.0) · Rotas: Virtual Radar Server Standing Data (CC0 1.0)';
+export const ATTRIBUTION = 'Dados de voo: adsb.lol (ODbL 1.0) · Rotas: Virtual Radar Server Standing Data (CC0 1.0)';
 const UA = 'voo-ao-vivo-teste/0.1 (+https://github.com/albertocolombara/voo-ao-vivo-teste)';
 
 // ---------- geometria ----------
@@ -299,7 +299,7 @@ export async function collect(env, now = Date.now()) {
   // 6. acompanhamento de pouso
   await trackLandings(env, now, new Set(flightsByPoint.keys()), airMap, flightsByPoint);
 
-  return { runId, rows, routeCalls, errors, failures };
+  return { runId, rows, routeCalls, errors, failures, flightsByPoint };
 }
 
 const destPointOf = (lat, lon) => WORLD_POINTS.find((p) => distKm(p.lat, p.lon, lat, lon) < WATCH_DEST_KM) || null;
