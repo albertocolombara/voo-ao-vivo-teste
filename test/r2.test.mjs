@@ -28,7 +28,7 @@ test('slug das regiões', () => {
 
 test('arquivo da região no formato do app', () => {
   const agora = Date.UTC(2026, 10, 19, 15, 40);
-  const ap = (iata, lat, lon) => ({ iata, icao: null, name: iata, lat, lon });
+  const ap = (iata, lat, lon) => ({ iata, icao: null, name: iata, city: 'London', country: 'GB', lat, lon });
   const arq = arquivoDaRegiao('Londres-Paris', [
     { hex: 'abc', cs: 'RYR1', airline: 'RYR', type: 'B738', lat: 45, lon: 2, alt: 37000, gs: 450, track: 335, o: ap('BCN', 41.3, 2.1), d: ap('LGW', 51.1, -0.2), remKm: 700, eta: 72 },
   ], agora, 'x');
@@ -37,6 +37,9 @@ test('arquivo da região no formato do app', () => {
   assert.equal(arq.voos[0].pousoPrevistoEm, '2026-11-19T16:52:00.000Z');
   assert.equal(arq.voos[0].destino.iata, 'LGW');
   assert.equal(arq.voos[0].companhiaPais, 'IE');
+  assert.equal(arq.voos[0].companhiaNome, 'Ryanair');
+  assert.equal(arq.voos[0].destino.cidade, 'London');
+  assert.equal(arq.voos[0].destino.pais, 'GB');
 });
 
 test('país da companhia', () => {

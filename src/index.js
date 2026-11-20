@@ -135,8 +135,8 @@ function toFlight(ac, route, leg) {
     alt: ac.alt_baro,
     gs: ac.gs,
     track: ac.track ?? null,
-    o: { iata: leg.o.iata || null, icao: leg.o.icao || null, name: leg.o.name || null, lat: leg.o.lat, lon: leg.o.lon },
-    d: { iata: leg.d.iata || null, icao: leg.d.icao || null, name: leg.d.name || null, lat: leg.d.lat, lon: leg.d.lon },
+    o: { iata: leg.o.iata || null, icao: leg.o.icao || null, name: leg.o.name || null, city: leg.o.location || null, country: leg.o.countryiso2 || null, lat: leg.o.lat, lon: leg.o.lon },
+    d: { iata: leg.d.iata || null, icao: leg.d.icao || null, name: leg.d.name || null, city: leg.d.location || null, country: leg.d.countryiso2 || null, lat: leg.d.lat, lon: leg.d.lon },
     remKm: Math.round(leg.pd),
     eta: Math.round(eta),
   };

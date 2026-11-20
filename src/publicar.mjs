@@ -7,11 +7,21 @@ import fs from 'node:fs';
 export const VERSAO = 1;
 
 // Código ICAO da companhia -> país (ISO 3166-1 alfa-2). Gerado por scripts/gerar-companhias.mjs (OpenFlights, ODbL).
+// Formato: { ICAO: "BR" } (antigo) ou { ICAO: ["BR", "LATAM Brasil"] }.
 const COMPANHIAS = JSON.parse(fs.readFileSync(new URL('./companhias.json', import.meta.url), 'utf8'));
+const registro = (codigo, callsign) => COMPANHIAS[codigo] ?? COMPANHIAS[String(callsign || '').slice(0, 3).toUpperCase()] ?? null;
 
 /** País da companhia pelo código da rota ou, sem ele, pelas 3 primeiras letras do indicativo. */
-export const paisDaCompanhia = (codigo, callsign) =>
-  COMPANHIAS[codigo] ?? COMPANHIAS[String(callsign || '').slice(0, 3).toUpperCase()] ?? null;
+export const paisDaCompanhia = (codigo, callsign) => {
+  const r = registro(codigo, callsign);
+  return Array.isArray(r) ? r[0] : r;
+};
+
+/** Nome da companhia (OpenFlights), para a linha do painel de partidas. */
+export const nomeDaCompanhia = (codigo, callsign) => {
+  const r = registro(codigo, callsign);
+  return Array.isArray(r) ? r[1] ?? null : null;
+};
 
 /** "Londres-Paris" -> "londres-paris"; "São Paulo" -> "sao-paulo". */
 export const slug = (s) =>
@@ -22,7 +32,7 @@ export const slug = (s) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
-const aeroporto = (a) => ({ iata: a.iata, icao: a.icao, nome: a.name, lat: a.lat, lon: a.lon });
+const aeroporto = (a) => ({ iata: a.iata, icao: a.icao, nome: a.name, cidade: a.city ?? null, pais: a.country ?? null, lat: a.lat, lon: a.lon });
 
 /** Converte os voos coerentes de uma região para o formato do app. */
 export function arquivoDaRegiao(regiao, voos, agora, atribuicao) {
@@ -37,6 +47,7 @@ export function arquivoDaRegiao(regiao, voos, agora, atribuicao) {
       callsign: f.cs,
       companhia: f.airline,
       companhiaPais: paisDaCompanhia(f.airline, f.cs),
+      companhiaNome: nomeDaCompanhia(f.airline, f.cs),
       aeronave: f.type,
       origem: aeroporto(f.o),
       destino: aeroporto(f.d),

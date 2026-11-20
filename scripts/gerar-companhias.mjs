@@ -58,6 +58,7 @@ const [airlines, countries] = await Promise.all(
 const iso = { ...Object.fromEntries(linhas(countries).filter((r) => r[1]).map((r) => [r[0], r[1]])), ...APELIDOS };
 
 const mapa = {};
+const nomes = {};
 const ativa = {};
 for (const r of linhas(airlines)) {
   const icao = r[4];
@@ -68,12 +69,18 @@ for (const r of linhas(airlines)) {
   if (!pais) continue;
   if (!(icao in mapa) || (ehAtiva && !ativa[icao])) {
     mapa[icao] = pais;
+    // nome: campos entre o id e o alias (vírgula sobrando no nome junta os pedaços)
+    nomes[icao] = r.length === 8 ? r[1] : r.slice(1, r.length - 6).join(',');
     ativa[icao] = ehAtiva;
   }
 }
 const correcoes = JSON.parse(fs.readFileSync('dados/companhias-correcoes.json', 'utf8'));
-for (const [icao, pais] of Object.entries(correcoes.companhias)) mapa[icao] = pais;
+for (const [icao, v] of Object.entries(correcoes.companhias)) {
+  const [pais, nome] = Array.isArray(v) ? v : [v, null];
+  mapa[icao] = pais;
+  if (nome) nomes[icao] = nome;
+}
 
-const ordenado = Object.fromEntries(Object.keys(mapa).sort().map((k) => [k, mapa[k]]));
+const ordenado = Object.fromEntries(Object.keys(mapa).sort().map((k) => [k, nomes[k] ? [mapa[k], nomes[k].trim()] : [mapa[k]]]));
 fs.writeFileSync('src/companhias.json', JSON.stringify(ordenado) + '\n');
 console.log(`${Object.keys(ordenado).length} companhias (${Object.keys(correcoes.companhias).length} correções manuais)`);
