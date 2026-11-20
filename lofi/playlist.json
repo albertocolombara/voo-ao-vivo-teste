@@ -1,0 +1,196 @@
+{
+ "versao": 1,
+ "nome": "Lofi a bordo",
+ "autor": "HoliznaCC0",
+ "album": "Lo-fi And Chill",
+ "licenca": "CC0 1.0",
+ "fonte": "https://freemusicarchive.org/music/holiznacc0/lo-fi-and-chill",
+ "faixas": [
+  {
+   "id": "everything-you-ever-dreamed",
+   "titulo": "Everything You Ever Dreamed",
+   "duracaoS": 220,
+   "bytes": 2751214
+  },
+  {
+   "id": "pretty-little-lies",
+   "titulo": "Pretty Little Lies",
+   "duracaoS": 210,
+   "bytes": 2607328
+  },
+  {
+   "id": "something-in-the-air",
+   "titulo": "Something In the Air",
+   "duracaoS": 132,
+   "bytes": 1639835
+  },
+  {
+   "id": "small-towns-smaller-lives",
+   "titulo": "Small Towns Smaller Lives",
+   "duracaoS": 146,
+   "bytes": 1811026
+  },
+  {
+   "id": "mundane",
+   "titulo": "Mundane",
+   "duracaoS": 158,
+   "bytes": 1964905
+  },
+  {
+   "id": "glad-to-be-stuck-inside",
+   "titulo": "Glad To Be Stuck Inside",
+   "duracaoS": 161,
+   "bytes": 1979556
+  },
+  {
+   "id": "vintage",
+   "titulo": "Vintage",
+   "duracaoS": 174,
+   "bytes": 2173754
+  },
+  {
+   "id": "morning-coffee",
+   "titulo": "Morning Coffee",
+   "duracaoS": 192,
+   "bytes": 2425291
+  },
+  {
+   "id": "a-little-shade",
+   "titulo": "A Little Shade",
+   "duracaoS": 179,
+   "bytes": 2188336
+  },
+  {
+   "id": "all-the-way-sad",
+   "titulo": "All The Way Sad",
+   "duracaoS": 186,
+   "bytes": 2306634
+  },
+  {
+   "id": "ghosts",
+   "titulo": "Ghosts",
+   "duracaoS": 90,
+   "bytes": 1123176
+  },
+  {
+   "id": "shut-up-or-shut-in",
+   "titulo": "Shut up, or shut in",
+   "duracaoS": 120,
+   "bytes": 1513930
+  },
+  {
+   "id": "whatever",
+   "titulo": "Whatever",
+   "duracaoS": 237,
+   "bytes": 2952448
+  },
+  {
+   "id": "yesterday",
+   "titulo": "Yesterday",
+   "duracaoS": 151,
+   "bytes": 1894660
+  },
+  {
+   "id": "letting-go-of-the-past",
+   "titulo": "Letting Go Of The Past",
+   "duracaoS": 180,
+   "bytes": 2218950
+  },
+  {
+   "id": "cellar-door",
+   "titulo": "Cellar Door",
+   "duracaoS": 132,
+   "bytes": 1649985
+  },
+  {
+   "id": "you-loved-me-once",
+   "titulo": "You Loved Me Once",
+   "duracaoS": 182,
+   "bytes": 2273390
+  },
+  {
+   "id": "puppy-love",
+   "titulo": "Puppy Love",
+   "duracaoS": 150,
+   "bytes": 1860604
+  },
+  {
+   "id": "clouds",
+   "titulo": "Clouds",
+   "duracaoS": 230,
+   "bytes": 2871703
+  },
+  {
+   "id": "busted-jazz",
+   "titulo": "Busted Jazz",
+   "duracaoS": 149,
+   "bytes": 1874465
+  },
+  {
+   "id": "autumn",
+   "titulo": "Autumn",
+   "duracaoS": 170,
+   "bytes": 2144824
+  },
+  {
+   "id": "mixed-signals",
+   "titulo": "Mixed Signals",
+   "duracaoS": 109,
+   "bytes": 1332671
+  },
+  {
+   "id": "new-shoes",
+   "titulo": "New Shoes",
+   "duracaoS": 156,
+   "bytes": 1924311
+  },
+  {
+   "id": "foggy-headed",
+   "titulo": "Foggy Headed",
+   "duracaoS": 246,
+   "bytes": 3087481
+  },
+  {
+   "id": "ramen",
+   "titulo": "Ramen",
+   "duracaoS": 113,
+   "bytes": 1426892
+  },
+  {
+   "id": "happy-but-a-little-off",
+   "titulo": "Happy, but a little off",
+   "duracaoS": 117,
+   "bytes": 1457200
+  },
+  {
+   "id": "static",
+   "titulo": "Static",
+   "duracaoS": 149,
+   "bytes": 1861004
+  },
+  {
+   "id": "creature-comforts",
+   "titulo": "Creature Comforts",
+   "duracaoS": 175,
+   "bytes": 2204038
+  },
+  {
+   "id": "not-it-lofi",
+   "titulo": "Not It (Lofi)",
+   "duracaoS": 177,
+   "bytes": 2191443
+  },
+  {
+   "id": "plants",
+   "titulo": "Plants",
+   "duracaoS": 233,
+   "bytes": 2875346
+  },
+  {
+   "id": "seasons-change",
+   "titulo": "Seasons Change",
+   "duracaoS": 136,
+   "bytes": 1680352
+  }
+ ]
+}
