@@ -1,0 +1,20 @@
+{
+  "_sobre": "Correções manuais ao mapa companhia -> país (OpenFlights). Código ICAO de 3 letras -> ISO 3166-1 alfa-2. Entram as companhias vistas no coletor que faltam na base ou estão com o país errado.",
+  "companhias": {
+    "ASA": "US",
+    "EDV": "US",
+    "QLK": "AU",
+    "ITY": "IT",
+    "WMT": "MT",
+    "WUK": "GB",
+    "APJ": "JP",
+    "APZ": "KR",
+    "TZP": "JP",
+    "EJU": "AT",
+    "SJX": "TW",
+    "FBU": "FR",
+    "RUK": "GB",
+    "BEL": "BE",
+    "LHX": "DE"
+  }
+}
