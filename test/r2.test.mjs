@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { assinar } from '../src/r2.mjs';
-import { arquivoDaRegiao, slug, paisDaCompanhia } from '../src/publicar.mjs';
+import { arquivoDaRegiao, slug, paisDaCompanhia, faixaDoDia, publicarNoR2 } from '../src/publicar.mjs';
 
 // Exemplo oficial da AWS (S3, "GET Object", Signature V4)
 test('assinatura SigV4 confere com o exemplo da AWS', () => {
@@ -43,4 +43,19 @@ test('país da companhia', () => {
   assert.equal(paisDaCompanhia('TAM', 'TAM3300'), 'BR');
   assert.equal(paisDaCompanhia(null, 'KAL017'), 'KR');
   assert.equal(paisDaCompanhia(null, 'N123AB'), null);
+});
+
+test('faixa de 20 min do histórico', () => {
+  assert.equal(faixaDoDia(Date.UTC(2026, 10, 19, 15, 47)), '1540');
+  assert.equal(faixaDoDia(Date.UTC(2026, 10, 19, 0, 0)), '0000');
+  assert.equal(faixaDoDia(Date.UTC(2026, 10, 19, 23, 59)), '2340');
+});
+
+test('publica o arquivo da região, o histórico e o índice', async () => {
+  const enviados = [];
+  const r2 = { enviar: async (k) => enviados.push(k) };
+  const agora = Date.UTC(2026, 10, 19, 15, 47);
+  const { falhas } = await publicarNoR2(r2, new Map([['São Paulo', []]]), agora, 'x');
+  assert.deepEqual(falhas, []);
+  assert.deepEqual(enviados, ['voos/sao-paulo.json', 'historico/sao-paulo/1540.json', 'voos/indice.json']);
 });
