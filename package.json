@@ -6,6 +6,6 @@
   "engines": { "node": ">=22" },
   "scripts": {
     "coleta": "node --no-warnings scripts/run.mjs",
-    "test": "node test/sim.mjs"
+    "test": "node --test test/r2.test.mjs && node test/sim.mjs"
   }
 }
