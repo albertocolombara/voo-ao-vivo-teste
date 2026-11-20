@@ -1,0 +1,41 @@
+# Gera os blocos de paisagem da janela (NASA GIBS -> WebP -> Cloudflare R2). Só roda quando disparado à mão.
+# Retoma de onde parou: blocos já enviados são pulados. Rodar de novo uma parte que falhou é seguro.
+name: Blocos de paisagem
+
+on:
+  workflow_dispatch:
+    inputs:
+      camada:
+        description: 'Camada (w8, i9 ou w10)'
+        required: true
+        type: choice
+        options: [w8, i9, w10]
+
+concurrency:
+  group: blocos-${{ inputs.camada }}
+  cancel-in-progress: false
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      max-parallel: 4 # gentil com o GIBS da NASA
+      matrix:
+        parte: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: blocos
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pillow numpy boto3
+      - name: Gerar e enviar
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: python blocos/gerar.py --camada ${{ inputs.camada }} --parte ${{ matrix.parte }} --partes 16 --paralelo 8
