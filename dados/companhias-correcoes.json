@@ -1,20 +1,69 @@
 {
-  "_sobre": "Correções manuais ao mapa companhia -> país (OpenFlights). Código ICAO de 3 letras -> ISO 3166-1 alfa-2. Entram as companhias vistas no coletor que faltam na base ou estão com o país errado.",
+  "_sobre": "Correções manuais ao mapa companhia -> país (OpenFlights). Código ICAO de 3 letras -> [ISO 3166-1 alfa-2, nome]. Entram as companhias vistas no coletor que faltam na base ou estão com dado errado.",
   "companhias": {
-    "ASA": "US",
-    "EDV": "US",
-    "QLK": "AU",
-    "ITY": "IT",
-    "WMT": "MT",
-    "WUK": "GB",
-    "APJ": "JP",
-    "APZ": "KR",
-    "TZP": "JP",
-    "EJU": "AT",
-    "SJX": "TW",
-    "FBU": "FR",
-    "RUK": "GB",
-    "BEL": "BE",
-    "LHX": "DE"
+    "ASA": [
+      "US",
+      "Alaska Airlines"
+    ],
+    "EDV": [
+      "US",
+      "Endeavor Air"
+    ],
+    "QLK": [
+      "AU",
+      "QantasLink"
+    ],
+    "ITY": [
+      "IT",
+      "ITA Airways"
+    ],
+    "WMT": [
+      "MT",
+      "Wizz Air Malta"
+    ],
+    "WUK": [
+      "GB",
+      "Wizz Air UK"
+    ],
+    "APJ": [
+      "JP",
+      "Peach Aviation"
+    ],
+    "APZ": [
+      "KR",
+      "Air Premia"
+    ],
+    "TZP": [
+      "JP",
+      "ZIPAIR"
+    ],
+    "EJU": [
+      "AT",
+      "easyJet Europe"
+    ],
+    "SJX": [
+      "TW",
+      "Starlux Airlines"
+    ],
+    "FBU": [
+      "FR",
+      "French bee"
+    ],
+    "RUK": [
+      "GB",
+      "Ryanair UK"
+    ],
+    "BEL": [
+      "BE",
+      "Brussels Airlines"
+    ],
+    "LHX": [
+      "DE",
+      "Lufthansa City Airlines"
+    ],
+    "TAM": [
+      "BR",
+      "LATAM Airlines Brasil"
+    ]
   }
 }
