@@ -2020,3 +2020,11 @@
 {"k":"ps","run_id":349,"ts":1795132218238,"point":"Istambul","status":"ok","http":200,"ms":133,"seen":63,"airborne":56,"routed":49,"coherent":43,"b25":2,"b50":2,"b90":9,"b180":9,"b360":18}
 {"k":"ps","run_id":349,"ts":1795132218238,"point":"Dallas-Atlanta","status":"ok","http":200,"ms":147,"seen":415,"airborne":381,"routed":227,"coherent":144,"b25":46,"b50":32,"b90":25,"b180":12,"b360":6}
 {"k":"ps","run_id":349,"ts":1795132218238,"point":"MUNDO","status":"ok","http":null,"ms":null,"seen":12,"airborne":0,"routed":0,"coherent":807,"b25":207,"b50":134,"b90":112,"b180":86,"b360":71}
+{"k":"run","id":350,"ts":1795132830657,"metered_calls":6,"route_calls":0,"errors":0,"ms":13883}
+{"k":"ps","run_id":350,"ts":1795132830657,"point":"Londres-Paris","status":"ok","http":200,"ms":377,"seen":83,"airborne":50,"routed":39,"coherent":36,"b25":13,"b50":4,"b90":1,"b180":1,"b360":3}
+{"k":"ps","run_id":350,"ts":1795132830657,"point":"Tóquio","status":"ok","http":200,"ms":139,"seen":175,"airborne":130,"routed":119,"coherent":105,"b25":30,"b50":21,"b90":11,"b180":3,"b360":3}
+{"k":"ps","run_id":350,"ts":1795132830657,"point":"Los Angeles","status":"ok","http":200,"ms":145,"seen":414,"airborne":291,"routed":177,"coherent":117,"b25":53,"b50":9,"b90":9,"b180":7,"b360":5}
+{"k":"ps","run_id":350,"ts":1795132830657,"point":"Dubai","status":"ok","http":200,"ms":135,"seen":124,"airborne":99,"routed":91,"coherent":88,"b25":15,"b50":6,"b90":18,"b180":22,"b360":13}
+{"k":"ps","run_id":350,"ts":1795132830657,"point":"São Paulo","status":"ok","http":200,"ms":119,"seen":93,"airborne":83,"routed":79,"coherent":61,"b25":18,"b50":4,"b90":3,"b180":2,"b360":2}
+{"k":"ps","run_id":350,"ts":1795132830657,"point":"Singapura","status":"ok","http":200,"ms":116,"seen":53,"airborne":49,"routed":39,"coherent":35,"b25":7,"b50":5,"b90":3,"b180":4,"b360":0}
+{"k":"ps","run_id":350,"ts":1795132830657,"point":"MUNDO","status":"ok","http":null,"ms":null,"seen":12,"airborne":0,"routed":0,"coherent":1136,"b25":274,"b50":158,"b90":143,"b180":116,"b360":94}
