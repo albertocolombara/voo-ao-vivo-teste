@@ -57,9 +57,14 @@ const result = await collect(env, now);
 const r2 = criarR2();
 let r2Resumo = 'R2: sem credenciais';
 if (r2) {
-  const { indice, falhas } = await publicarNoR2(r2, result.flightsByPoint, now, ATTRIBUTION, state.indiceR2);
+  // O adsb.lol às vezes responde 200 sem nenhum avião (19/11, 23:40 UTC, nas 6 regiões).
+  // Nesse caso a região não é publicada e o app continua com o arquivo anterior.
+  const vazias = new Set(result.rows.filter((r) => r.status === 'ok' && r.seen === 0).map((r) => r.point));
+  const publicaveis = new Map([...result.flightsByPoint].filter(([p]) => !vazias.has(p)));
+  const { indice, falhas } = await publicarNoR2(r2, publicaveis, now, ATTRIBUTION, state.indiceR2);
   state.indiceR2 = indice;
-  r2Resumo = `R2: ${result.flightsByPoint.size - falhas.filter((f) => !f.includes('indice')).length}/${result.flightsByPoint.size} regiões enviadas`;
+  r2Resumo = `R2: ${publicaveis.size - falhas.filter((f) => !f.includes('indice')).length}/${result.flightsByPoint.size} regiões enviadas`;
+  if (vazias.size) r2Resumo += ` · sem aviões na resposta (mantidas): ${[...vazias].join(', ')}`;
   if (falhas.length) r2Resumo += `\nERROS R2:\n${falhas.join('\n')}`;
 }
 
