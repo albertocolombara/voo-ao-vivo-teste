@@ -5,6 +5,8 @@ on:
 jobs:
   diag:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -13,8 +15,9 @@ jobs:
           python-version: '3.12'
       - run: pip install boto3 rasterio numpy pillow
       - run: python diag/satelite.py
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: amostras
-          path: saida/
+      - run: |
+          git config user.name github-actions
+          git config user.email github-actions@users.noreply.github.com
+          git add -f saida/*.jpg
+          git commit -m "Prévias do diagnóstico [skip ci]"
+          git push
