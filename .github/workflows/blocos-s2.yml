@@ -17,6 +17,10 @@ on:
       antes:
         description: 'contar/limpar: apaga o que foi gravado antes desta data e hora (UTC, AAAA-MM-DDTHH:MM)'
         required: false
+      luzes:
+        description: 'gerar: gerar também as luzes (l9)'
+        type: boolean
+        default: true
       i9:
         description: 'contar/limpar: incluir a camada antiga de luzes i9'
         type: boolean
@@ -64,7 +68,7 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
-        run: python blocos/gerar_s2.py --parte ${{ matrix.parte }} --partes 20 --processos 4
+        run: python blocos/gerar_s2.py --parte ${{ matrix.parte }} --partes 20 --processos 4 ${{ !inputs.luzes && '--sem-luzes' || '' }}
 
   limpar:
     if: github.event_name == 'workflow_dispatch' && (inputs.modo == 'contar' || inputs.modo == 'limpar')

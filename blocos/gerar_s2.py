@@ -20,8 +20,7 @@ Como funciona: o trabalho é dividido por bloco do nível 8 (1,125°). Para cada
 Sentinel-2 da área (com margem), gera os 16 blocos do nível 10 e o do nível 8, e, se há luz, lê o mapa
 de cobertura e gera os blocos de luzes do nível 9. Cor: curvas por canal casadas com o Landsat atual (a janela
 foi calibrada nele), uma para terra e outra para água (curvas_s2.json). Água: rios e lagos ficam com
-a cor real; o mar (OSM) usa a água do satélite perto da costa e passa ao Blue Marble onde o mosaico
-de satélite acaba. Bloco sem terra nem água interior não é enviado (o app trata 404 como vazio).
+a cor real (meia saturação, brilho limitado); o mar (OSM) fica todo com a cor do Blue Marble. Bloco sem terra nem água interior não é enviado (o app trata 404 como vazio).
 
 Uso:
   python blocos/gerar_s2.py --amostra 300                    (projeta o tamanho total, sem enviar)
@@ -65,7 +64,7 @@ QUALIDADE = {'w10': 70, 'w8': 70, 'l9': 80}
 # Trava de espaço: cada parte para se passar disto (20 partes × 0,46 GB ≈ 9,2 GB no pior caso).
 LIMITE_POR_PARTE = 0.46e9
 CACHE_CONTROL = 'public, max-age=604800'
-MARGEM = 80  # px do nível 10 em volta do grupo (~5 km), para a água do mar sumir sem emenda
+MARGEM = 80  # px do nível 10 em volta do grupo (~5 km), para os desfoques da costa não emendarem
 LUZ_MIN = 0.02  # bloco de luzes só onde há área construída com luz de verdade
 
 _C = json.loads((BASE / 'curvas_s2.json').read_text())
@@ -197,22 +196,34 @@ def curva(a, nome):
     return out
 
 
-def cor_do_grupo(a, oceano, mar_bm, px_km):
+def cor_do_grupo(a, oceano, mar_bm):
     """RGB (3, H, W) 0..1 e a máscara do que veio do satélite (terra e água interior)."""
-    from scipy.ndimage import distance_transform_edt
-
     rgb4 = a[:3]
     nir = a[3]
     valido = rgb4.max(0) > 0.0004
     agua = valido & ((rgb4[1] - nir) / (rgb4[1] + nir + 1e-6) > 0.0)
     terra = valido & ~agua
-    # mar: água do satélite some aos poucos até onde o mosaico acaba (~4 km)
-    dist = distance_transform_edt(valido) * px_km if (~valido).any() else np.full(valido.shape, 99.0, np.float32)
-    t = np.clip(dist / 4.0, 0, 1)
-    al_agua = (1 - oceano) + oceano * (t * t * (3 - 2 * t))
+    # Mar (OSM): todo no Blue Marble, como o globo de longe. Rios e lagos ficam com a cor real.
+    # Na Coreia (build-40) a água rasa e barrenta do mar virava manchas laranja, e o mosaico de
+    # satélite, que tem ou não tem mar em quadrados de 1°, deixava retângulos escuros.
+    al_agua = 1 - oceano
     al = np.where(terra, 1.0, np.where(agua, al_agua, 0.0)).astype(np.float32)
-    rgb = np.where(agua[None], curva(rgb4, 'agua'), curva(rgb4, 'terra'))
-    rgb = rgb * al[None] + mar_bm * (1 - al[None])
+    # Água: a curva da água (casada com o mar do Landsat) estoura a água barrenta e rasa (planícies
+    # de maré da Coreia viravam laranja, build-40). Metade da saturação e brilho limitado: barrenta
+    # continua barrenta, sem virar mancha laranja.
+    ag = curva(rgb4, 'agua')
+    lum = ag.mean(0, keepdims=True)
+    ag = lum + (ag - lum) * 0.5
+    ag = ag * np.minimum(1.0, 0.38 / np.maximum(ag.max(0, keepdims=True), 1e-6))
+    rgb = np.where(agua[None], ag, curva(rgb4, 'terra'))
+    # cor do mar: o Blue Marble só de onde ele é mar (média com peso do OSM), para a costa do
+    # Blue Marble (500 m) não vazar terra para dentro do mar
+    from scipy.ndimage import gaussian_filter
+
+    peso = gaussian_filter(oceano, 12) + 1e-4
+    mar = np.stack([gaussian_filter(mar_bm[ch] * oceano, 12) / peso for ch in range(3)])
+    mar = np.where(oceano[None] > 0.98, mar_bm, mar)
+    rgb = rgb * al[None] + mar * (1 - al[None])
     # "veio do satélite": terra ou água interior (o mar sozinho não justifica um bloco)
     proprio = terra | (agua & (oceano < 0.5))
     return rgb, proprio
@@ -247,7 +258,7 @@ def grupo(r8, c8, filhos_w10, faz_w8, candidatos_terra):
         oc = (osm > 100 / 255).astype(np.float32) if osm is not None else np.zeros((512, 512), np.float32)
         oc = cv2.resize(oc, (lado, lado), interpolation=cv2.INTER_LINEAR)
         oc = np.clip(gaussian_filter(np.pad(oc, m, mode='edge'), 6), 0, 1)
-        rgb, proprio = cor_do_grupo(a, oc, mar, graus(10) * 111.2 / 512)
+        rgb, proprio = cor_do_grupo(a, oc, mar)
         rgb, proprio = rgb[:, m:m + lado, m:m + lado], proprio[m:m + lado, m:m + lado]
         for (r, c) in filhos_w10:
             i, j = (r - r8 * 4) * 512, (c - c8 * 4) * 512
@@ -292,8 +303,12 @@ def cliente_r2():
     )
 
 
+# Muda a cada rodada completa nova (v2, 21/11/2026: mar todo no Blue Marble), para não pular tudo.
+RODADA = 'v2'
+
+
 def progresso(parte, partes):
-    return f'blocos/_s2/feitos-{parte}-de-{partes}.txt'
+    return f'blocos/_s2/{RODADA}/feitos-{parte}-de-{partes}.txt'
 
 
 def ler_progresso(s3, chave):
@@ -355,6 +370,8 @@ def main():
     ap.add_argument('--limite', type=int, default=0)
     ap.add_argument('--saida', help='grava em disco em vez de enviar')
     ap.add_argument('--processos', type=int, default=4)
+    ap.add_argument('--sem-luzes', action='store_true', help='só w10 e w8 (as luzes não mudaram)')
+    ap.add_argument('--grupos', help='só estes grupos do nível 8, "linha,coluna;linha,coluna" (teste)')
     a = ap.parse_args()
 
     grupos, n_w10, n_w8 = candidatos()
@@ -364,6 +381,8 @@ def main():
         meus = random.sample(chaves, a.amostra)
     else:
         meus = chaves[a.parte::a.partes]
+    if a.grupos:
+        meus = [g for g in (tuple(map(int, x.split(','))) for x in a.grupos.split(';')) if g in grupos]
     if a.limite:
         meus = meus[: a.limite]
 
@@ -374,7 +393,7 @@ def main():
         s3 = cliente_r2()
         feitos = ler_progresso(s3, progresso(a.parte, a.partes))
         print(f'grupos já feitos nesta parte: {len(feitos)}', flush=True)
-    tarefas = [(g[0], g[1], *grupos[g], a.saida, enviar) for g in meus if g not in feitos]
+    tarefas = [(g[0], g[1], grupos[g][0], grupos[g][1], [] if a.sem_luzes else grupos[g][2], a.saida, enviar) for g in meus if g not in feitos]
     print(f'grupos: {len(tarefas)} de {len(meus)} (parte {a.parte}/{a.partes})', flush=True)
     tot, erros, t0 = {}, 0, time.time()
     with ProcessPoolExecutor(a.processos) as ex:
