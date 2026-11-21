@@ -34,7 +34,4 @@ def folha(z, la0, la1, lo0, lo1, nome, px):
     print(nome, out.size, 'faltando', falta)
 
 
-folha(8, 30, 46, 124, 146, 'japao_coreia_w8', 64)
-folha(10, 34.5, 36.5, 131.5, 134.5, 'shimane_w10', 96)
-folha(10, 34.6, 35.6, 128.5, 129.6, 'busan_w10', 128)
-folha(10, 37.5, 38.5, 138.0, 139.0, 'sado_w10', 128)
+folha(10, 34.3, 35.3, 126.0, 127.6, 'jeolla_w10', 128)
