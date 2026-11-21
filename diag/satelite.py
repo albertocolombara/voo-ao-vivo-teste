@@ -41,7 +41,7 @@ def cor(z, r, c):
                 pass
     if not fontes:
         return None
-    a, _ = merge(fontes, bounds=(o, s, l, n), res=(l - o) / 512, indexes=[3, 2, 1], resampling=Resampling.average, nodata=0)
+    a, _ = merge(fontes, bounds=(o, s, l, n), res=(l - o) / 512, indexes=[3, 2, 1, 4], resampling=Resampling.average, nodata=0)
     for f in fontes:
         f.close()
     return a
@@ -77,7 +77,7 @@ def construido(z, r, c):
 CENAS = {'seul': (37.35, 126.75), 'bahia': (-12.5, -40.5), 'saopaulo': (-23.55, -46.63), 'rio': (-22.9, -43.2)}
 pedidos = set()
 for la, lo in CENAS.values():
-    for z, tipo in ((10, 'c'), (8, 'c'), (9, 'b'), (10, 'b')):
+    for z, tipo in ((10, 'c'), (8, 'c')):
         g = 288 / 2**z
         r0 = math.floor((90 - la) / g) - 2; c0 = math.floor((lo + 180) / g) - 2
         for i in range(4):
@@ -94,7 +94,8 @@ def fazer(p):
             if a is None or not a.any():
                 return p, 'vazio', time.time() - t
             v = np.sqrt(np.clip(a.astype(np.float32) / 10000, 0, 1)) * 255
-            Image.fromarray(v.transpose(1, 2, 0).astype(np.uint8)).save(f'{OUT}/c{z}_{r}_{c}.jpg', quality=93)
+            Image.fromarray(v[:3].transpose(1, 2, 0).astype(np.uint8)).save(f'{OUT}/c{z}_{r}_{c}.jpg', quality=93)
+            Image.fromarray(v[3].astype(np.uint8)).save(f'{OUT}/n{z}_{r}_{c}.png', optimize=True)
         else:
             a = construido(z, r, c)
             if a is None or a.max() == 0:
