@@ -1,0 +1,35 @@
+# Gera os blocos do globo do Termi (Blue/Black Marble -> WebP -> Cloudflare R2). Só roda à mão.
+# Retoma de onde parou: blocos já enviados são pulados.
+name: Blocos do globo
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: globo
+  cancel-in-progress: false
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4 # gentil com o GIBS da NASA
+      matrix:
+        parte: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: globo
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pillow numpy boto3
+      - name: Gerar e enviar
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: python globo/gerar.py --parte ${{ matrix.parte }} --partes 8 --paralelo 8
