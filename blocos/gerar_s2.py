@@ -65,7 +65,7 @@ QUALIDADE = {'w10': 70, 'w8': 70, 'l9': 80}
 # Trava de espaço: cada parte para se passar disto (20 partes × 0,46 GB ≈ 9,2 GB no pior caso).
 LIMITE_POR_PARTE = 0.46e9
 CACHE_CONTROL = 'public, max-age=604800'
-MARGEM = 80  # px do nível 10 em volta do grupo (~5 km), para a água do mar sumir sem emenda
+MARGEM = 176  # px do nível 10 em volta do grupo (~11 km): maior que as transições do mar, para não haver emenda entre grupos
 LUZ_MIN = 0.02  # bloco de luzes só onde há área construída com luz de verdade
 
 _C = json.loads((BASE / 'curvas_s2.json').read_text())
@@ -209,7 +209,12 @@ def cor_do_grupo(a, oceano, mar_bm, px_km):
     # mar: água do satélite some aos poucos até onde o mosaico acaba (~8 km)
     dist = distance_transform_edt(valido) * px_km if (~valido).any() else np.full(valido.shape, 99.0, np.float32)
     t = np.clip(dist / 8.0, 0, 1)
-    al_agua = (1 - oceano) + oceano * (t * t * (3 - 2 * t))
+    # e só perto da costa (até ~2 km cheia, some até ~6 km): o mar aberto fica todo no Blue Marble,
+    # sem os quadrados de 1° onde o mosaico de satélite tem ou não tem mar (build-40, Coreia)
+    dist_terra = distance_transform_edt(~terra) * px_km if terra.any() else np.full(valido.shape, 99.0, np.float32)
+    u = np.clip((dist_terra - 2.0) / 4.0, 0, 1)
+    costa = 1 - u * u * (3 - 2 * u)
+    al_agua = (1 - oceano) + oceano * (t * t * (3 - 2 * t)) * costa
     al = np.where(terra, 1.0, np.where(agua, al_agua, 0.0)).astype(np.float32)
     # Água: a curva da água (casada com o mar do Landsat) estoura a água barrenta e rasa (planícies
     # de maré da Coreia viravam laranja, build-40). Metade da saturação e brilho limitado: barrenta
