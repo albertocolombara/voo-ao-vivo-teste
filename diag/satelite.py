@@ -1,37 +1,16 @@
-"""Diagnóstico (temporário): blocos w10/w8 do R2 no Japão/Coreia, para ver os trechos borrados."""
-import io, math, os
-import boto3
-import numpy as np
+"""Diagnóstico (temporário): gera com o gerador da branch fix/agua-do-mar alguns grupos e monta folhas."""
+import os, subprocess, sys
 from PIL import Image
-
-s3 = boto3.client('s3', endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
-                  aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'], region_name='auto')
-B = os.environ['R2_BUCKET']
+G = {'jeolla': [(48, 271), (48, 272), (49, 271), (49, 272)], 'rio': [(100, 120), (100, 121), (101, 120), (101, 121)]}
+todos = ';'.join(f'{r},{c}' for v in G.values() for r, c in v)
+subprocess.run([sys.executable, 'blocos/gerar_s2.py', '--saida', '/tmp/s2', '--grupos', todos, '--processos', '4'], check=True)
 os.makedirs('saida3', exist_ok=True)
-
-
-def get(k):
-    try:
-        return Image.open(io.BytesIO(s3.get_object(Bucket=B, Key=k)['Body'].read())).convert('RGB')
-    except Exception:
-        return None
-
-
-def folha(z, la0, la1, lo0, lo1, nome, px):
-    g = 288 / 2**z
-    r0, r1 = int((90 - la1) / g), int((90 - la0) / g)
-    c0, c1 = int((lo0 + 180) / g), int((lo1 + 180) / g)
-    out = Image.new('RGB', ((c1 - c0 + 1) * px, (r1 - r0 + 1) * px), (255, 0, 255))
-    falta = 0
-    for r in range(r0, r1 + 1):
-        for c in range(c0, c1 + 1):
-            im = get(f'blocos/w{z}/{r}/{c}.webp')
-            if im is None:
-                falta += 1
-                continue
-            out.paste(im.resize((px, px)), ((c - c0) * px, (r - r0) * px))
-    out.save(f'saida3/{nome}.jpg', quality=85)
-    print(nome, out.size, 'faltando', falta)
-
-
-folha(10, 34.3, 35.3, 126.0, 127.6, 'jeolla_w10', 128)
+for nome, gs in G.items():
+    r0 = min(r for r, _ in gs) * 4; c0 = min(c for _, c in gs) * 4
+    out = Image.new('RGB', (8 * 128, 8 * 128), (255, 0, 255))
+    for i in range(8):
+        for j in range(8):
+            p = f'/tmp/s2/blocos/w10/{r0 + i}/{c0 + j}.webp'
+            if os.path.exists(p):
+                out.paste(Image.open(p).convert('RGB').resize((128, 128)), (j * 128, i * 128))
+    out.save(f'saida3/{nome}_novo.jpg', quality=85)
