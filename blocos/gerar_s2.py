@@ -7,6 +7,7 @@ camada de luzes `l10`, que substitui a `i9` (GMIS):
   w8   cor, nível 8 (~244 m/px)   janela (distância média) e globo
   l10  luzes, nível 10            R = fração de área construída (WorldCover, 10 m)
                                   G = luz real à noite (Black Marble 2016, VIIRS, 500 m)
+  l9   luzes, nível 9 (~122 m)    o mesmo, para a janela (mesma memória da antiga i9) e o globo
 
 Fontes (todas com uso comercial permitido):
   - ESA WorldCover Sentinel-2 RGBNIR median composite 2021 (CC BY 4.0), s3://esa-worldcover-s2
@@ -58,7 +59,7 @@ from PIL import Image  # noqa: E402
 BASE = Path(__file__).parent
 GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best'
 UA = 'termi-blocos/2.0 (+https://github.com/albertocolombara/voo-ao-vivo-teste)'
-QUALIDADE = {'w10': 78, 'w8': 78, 'l10': 80}
+QUALIDADE = {'w10': 78, 'w8': 78, 'l10': 80, 'l9': 80}
 CACHE_CONTROL = 'public, max-age=604800'
 MARGEM = 80  # px do nível 10 em volta do grupo (~5 km), para a água do mar sumir sem emenda
 LUZ_MIN = 0.02  # bloco de luzes só onde há área construída com luz de verdade
@@ -265,6 +266,15 @@ def grupo(r8, c8, filhos_w10, faz_w8, filhos_l10):
                         if (b * g).max() < LUZ_MIN:
                             continue
                         saida[f'blocos/l10/{r}/{c}.webp'] = webp(np.stack([b, g, np.zeros_like(b)]), QUALIDADE['l10'])
+                    # nível 9: os 2×2 blocos do grupo, reduzidos por área
+                    b9 = cv2.resize(built, (1024, 1024), interpolation=cv2.INTER_AREA)
+                    g9 = cv2.resize(luz, (1024, 1024), interpolation=cv2.INTER_AREA)
+                    for i in range(2):
+                        for j in range(2):
+                            b, g = b9[i * 512:(i + 1) * 512, j * 512:(j + 1) * 512], g9[i * 512:(i + 1) * 512, j * 512:(j + 1) * 512]
+                            if (b * g).max() < LUZ_MIN:
+                                continue
+                            saida[f'blocos/l9/{r8 * 2 + i}/{c8 * 2 + j}.webp'] = webp(np.stack([b, g, np.zeros_like(b)]), QUALIDADE['l9'])
     return saida
 
 
@@ -393,7 +403,7 @@ def main():
         total_grupos = len(chaves)
         print('--- projeção para o mundo (menos a Antártida) ---')
         soma = 0
-        for cam in ('w10', 'w8', 'l10'):
+        for cam in ('w10', 'w8', 'l10', 'l9'):
             gb = tot.get(cam, 0) / n * total_grupos / 1e9
             blocos = tot.get(cam + '#', 0) / n * total_grupos
             soma += gb
