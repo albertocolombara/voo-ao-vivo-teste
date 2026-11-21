@@ -1,0 +1,21 @@
+# Diagnóstico temporário: mede o tamanho dos arquivos que o app baixa do R2 (com e sem gzip).
+name: Diagnóstico de tamanhos
+on: workflow_dispatch
+jobs:
+  medir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Medir
+        run: |
+          B=https://pub-10aaf652e29a4aa99f9726219b1a3995.r2.dev
+          medir() { s=$(curl -s -o /dev/null -w "%{size_download}" "$1"); g=$(curl -s -o /dev/null -H "Accept-Encoding: gzip" -w "%{size_download}" "$1"); echo "$2 sem_gzip=$s com_gzip=$g"; }
+          medir $B/voos/indice.json indice
+          tot=0
+          for r in $(curl -s $B/voos/indice.json | jq -r '.regioes | keys[]'); do
+            s=$(curl -s -o /dev/null -w "%{size_download}" "$B/voos/$r.json"); tot=$((tot+s))
+            medir "$B/voos/$r.json" "regiao:$r"
+          done
+          echo "TOTAL_REGIOES=$tot"
+          r=$(curl -s $B/voos/indice.json | jq -r '.regioes | keys[0]')
+          medir "$B/historico/$r/1200.json" "historico:$r/1200"
+          curl -sI "$B/voos/$r.json" | grep -i -E "content-encoding|content-type|cache-control"
