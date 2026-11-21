@@ -1,16 +1,24 @@
-"""Diagnóstico (temporário): gera com o gerador da branch fix/agua-do-mar alguns grupos e monta folhas."""
-import os, subprocess, sys
-from PIL import Image
-G = {'jeolla': [(48, 271), (48, 272), (49, 271), (49, 272)], 'rio': [(100, 120), (100, 121), (101, 120), (101, 121)]}
-todos = ';'.join(f'{r},{c}' for v in G.values() for r, c in v)
-subprocess.run([sys.executable, 'blocos/gerar_s2.py', '--saida', '/tmp/s2', '--grupos', todos, '--processos', '4'], check=True)
-os.makedirs('saida3', exist_ok=True)
-for nome, gs in G.items():
-    r0 = min(r for r, _ in gs) * 4; c0 = min(c for _, c in gs) * 4
-    out = Image.new('RGB', (8 * 128, 8 * 128), (255, 0, 255))
-    for i in range(8):
-        for j in range(8):
-            p = f'/tmp/s2/blocos/w10/{r0 + i}/{c0 + j}.webp'
-            if os.path.exists(p):
-                out.paste(Image.open(p).convert('RGB').resize((128, 128)), (j * 128, i * 128))
-    out.save(f'saida3/{nome}_novo.jpg', quality=85)
+"""Diagnóstico (temporário): o r2.dev serve um objeto gravado com Content-Encoding: gzip?"""
+import gzip, json, os, subprocess
+import boto3
+s3 = boto3.client('s3', endpoint_url=f"https://{os.environ['R2_ACCOUNT_ID']}.r2.cloudflarestorage.com",
+                  aws_access_key_id=os.environ['R2_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['R2_SECRET_ACCESS_KEY'], region_name='auto')
+B = os.environ['R2_BUCKET']
+PUB = 'https://pub-10aaf652e29a4aa99f9726219b1a3995.r2.dev'
+orig = s3.get_object(Bucket=B, Key='voos/indice.json')['Body'].read()
+idx = json.loads(orig)
+reg = next(iter(idx['regioes']))
+corpo = s3.get_object(Bucket=B, Key=f'voos/{reg}.json')['Body'].read()
+gz = gzip.compress(corpo, 9)
+print('região', reg, 'bruto', len(corpo), 'gzip', len(gz))
+s3.put_object(Bucket=B, Key='teste/gzip.json', Body=gz, ContentType='application/json; charset=utf-8', ContentEncoding='gzip', CacheControl='no-cache')
+for ae in ['gzip', 'identity', None]:
+    cmd = ['curl', '-s', '-D', '-', '-o', '/tmp/r.bin', PUB + '/teste/gzip.json']
+    if ae: cmd[1:1] = ['-H', f'Accept-Encoding: {ae}']
+    h = subprocess.run(cmd, capture_output=True, text=True).stdout
+    tam = os.path.getsize('/tmp/r.bin')
+    cab = [l for l in h.splitlines() if l.lower().split(':')[0] in ('http/1.1', 'http/2', 'content-encoding', 'content-length', 'content-type')] + [h.splitlines()[0]]
+    raw = open('/tmp/r.bin', 'rb').read()
+    print('Accept-Encoding', ae, '| bytes recebidos', tam, '| é gzip?', raw[:2] == b'\x1f\x8b', '|', cab)
+# Python urllib (como um cliente sem gzip)
+s3.delete_object(Bucket=B, Key='teste/gzip.json')
