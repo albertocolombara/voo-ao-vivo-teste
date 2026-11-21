@@ -206,12 +206,19 @@ def cor_do_grupo(a, oceano, mar_bm, px_km):
     valido = rgb4.max(0) > 0.0004
     agua = valido & ((rgb4[1] - nir) / (rgb4[1] + nir + 1e-6) > 0.0)
     terra = valido & ~agua
-    # mar: água do satélite some aos poucos até onde o mosaico acaba (~4 km)
+    # mar: água do satélite some aos poucos até onde o mosaico acaba (~8 km)
     dist = distance_transform_edt(valido) * px_km if (~valido).any() else np.full(valido.shape, 99.0, np.float32)
-    t = np.clip(dist / 4.0, 0, 1)
+    t = np.clip(dist / 8.0, 0, 1)
     al_agua = (1 - oceano) + oceano * (t * t * (3 - 2 * t))
     al = np.where(terra, 1.0, np.where(agua, al_agua, 0.0)).astype(np.float32)
-    rgb = np.where(agua[None], curva(rgb4, 'agua'), curva(rgb4, 'terra'))
+    # Água: a curva da água (casada com o mar do Landsat) estoura a água barrenta e rasa (planícies
+    # de maré da Coreia viravam laranja, build-40). Metade da saturação e brilho limitado: barrenta
+    # continua barrenta, sem virar mancha laranja.
+    ag = curva(rgb4, 'agua')
+    lum = ag.mean(0, keepdims=True)
+    ag = lum + (ag - lum) * 0.5
+    ag = ag * np.minimum(1.0, 0.38 / np.maximum(ag.max(0, keepdims=True), 1e-6))
+    rgb = np.where(agua[None], ag, curva(rgb4, 'terra'))
     rgb = rgb * al[None] + mar_bm * (1 - al[None])
     # "veio do satélite": terra ou água interior (o mar sozinho não justifica um bloco)
     proprio = terra | (agua & (oceano < 0.5))
@@ -355,6 +362,7 @@ def main():
     ap.add_argument('--limite', type=int, default=0)
     ap.add_argument('--saida', help='grava em disco em vez de enviar')
     ap.add_argument('--processos', type=int, default=4)
+    ap.add_argument('--grupos', help='só estes grupos do nível 8, "linha,coluna;linha,coluna" (teste)')
     a = ap.parse_args()
 
     grupos, n_w10, n_w8 = candidatos()
@@ -364,6 +372,8 @@ def main():
         meus = random.sample(chaves, a.amostra)
     else:
         meus = chaves[a.parte::a.partes]
+    if a.grupos:
+        meus = [g for g in (tuple(map(int, x.split(','))) for x in a.grupos.split(';')) if g in grupos]
     if a.limite:
         meus = meus[: a.limite]
 
