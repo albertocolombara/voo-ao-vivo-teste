@@ -62,3 +62,26 @@ test('publica o arquivo da região, o histórico e o índice', async () => {
   assert.deepEqual(falhas, []);
   assert.deepEqual(enviados, ['voos/sao-paulo.json', 'historico/sao-paulo/1540.json', 'voos/indice.json']);
 });
+
+test('envia JSON comprimido com Content-Encoding: gzip', async () => {
+  const { criarR2 } = await import('../src/r2.mjs');
+  const zlib = await import('node:zlib');
+  const pedidos = [];
+  const original = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    pedidos.push({ url, init });
+    return { ok: true, text: async () => '' };
+  };
+  try {
+    const r2 = criarR2({ R2_ACCOUNT_ID: 'a', R2_ACCESS_KEY_ID: 'k', R2_SECRET_ACCESS_KEY: 's', R2_BUCKET: 'b' });
+    await r2.enviar('voos/x.json', JSON.stringify({ voos: [1, 2, 3] }));
+    await r2.enviar('outro.txt', 'oi', { contentType: 'text/plain' });
+  } finally {
+    globalThis.fetch = original;
+  }
+  assert.equal(pedidos[0].init.headers['content-encoding'], 'gzip');
+  assert.deepEqual(JSON.parse(zlib.gunzipSync(pedidos[0].init.body).toString()), { voos: [1, 2, 3] });
+  assert.match(pedidos[0].init.headers.authorization, /content-encoding/);
+  assert.equal(pedidos[1].init.headers['content-encoding'], undefined);
+  assert.equal(pedidos[1].init.body.toString(), 'oi');
+});

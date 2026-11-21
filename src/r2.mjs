@@ -2,6 +2,7 @@
 // Sem dependências: usa só o crypto do Node.
 // Credenciais (segredos do GitHub): R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET.
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
 
 const sha256 = (data) => crypto.createHash('sha256').update(data).digest('hex');
 const hmac = (key, data) => crypto.createHmac('sha256', key).update(data).digest();
@@ -38,15 +39,19 @@ export function criarR2(env = process.env) {
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_BUCKET) return null;
   const host = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
   return {
-    async enviar(key, conteudo, { contentType = 'application/json; charset=utf-8', cacheControl = 'public, max-age=60' } = {}) {
-      const body = Buffer.from(conteudo);
+    // JSON vai comprimido (Content-Encoding: gzip): o r2.dev entrega comprimido a quem aceita gzip
+    // (o app, pelo OkHttp/URLSession) e descomprime para os outros. Região de ~144 KB vira ~22 KB
+    // (teste de 21/11/2026); era a maior parte dos 2,4 MB de "voos" medidos pelo Alberto.
+    async enviar(key, conteudo, { contentType = 'application/json; charset=utf-8', cacheControl = 'public, max-age=60', gzip = contentType.startsWith('application/json') } = {}) {
+      const body = gzip ? zlib.gzipSync(Buffer.from(conteudo), { level: 9 }) : Buffer.from(conteudo);
+      const extras = gzip ? { 'content-encoding': 'gzip' } : {};
       const path = `/${R2_BUCKET}/${encodePath(key)}`;
       const amzDate = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
       const headers = assinar({
         method: 'PUT',
         host,
         path,
-        headers: { 'content-type': contentType, 'cache-control': cacheControl },
+        headers: { 'content-type': contentType, 'cache-control': cacheControl, ...extras },
         body,
         accessKeyId: R2_ACCESS_KEY_ID,
         secretAccessKey: R2_SECRET_ACCESS_KEY,
