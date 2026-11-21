@@ -1,13 +1,13 @@
 """Blocos de paisagem da janela e do globo do Termi a partir do Sentinel-2 (ESA WorldCover 2021).
 
 Substitui o Landsat WELD (2000) nas camadas `w10` e `w8` (mesma grade, mesmas chaves no R2) e cria a
-camada de luzes `l10`, que substitui a `i9` (GMIS):
+camada de luzes `l9`, que substitui a `i9` (GMIS):
 
   w10  cor, nível 10 (~61 m/px)   janela (perto do avião) e globo de perto
   w8   cor, nível 8 (~244 m/px)   janela (distância média) e globo
-  l10  luzes, nível 10            R = fração de área construída (WorldCover, 10 m)
+  l9   luzes, nível 9 (~122 m)    R = fração de área construída (WorldCover, 10 m)
                                   G = luz real à noite (Black Marble 2016, VIIRS, 500 m)
-  l9   luzes, nível 9 (~122 m)    o mesmo, para a janela (mesma memória da antiga i9) e o globo
+                                  janela (mesma memória da antiga i9) e globo de perto
 
 Fontes (todas com uso comercial permitido):
   - ESA WorldCover Sentinel-2 RGBNIR median composite 2021 (CC BY 4.0), s3://esa-worldcover-s2
@@ -18,7 +18,7 @@ Crédito obrigatório (CC BY): "ESA WorldCover project 2021 / Contains modified 
 
 Como funciona: o trabalho é dividido por bloco do nível 8 (1,125°). Para cada um, lê de uma vez o
 Sentinel-2 da área (com margem), gera os 16 blocos do nível 10 e o do nível 8, e, se há luz, lê o mapa
-de cobertura e gera os blocos de luzes. Cor: curvas por canal casadas com o Landsat atual (a janela
+de cobertura e gera os blocos de luzes do nível 9. Cor: curvas por canal casadas com o Landsat atual (a janela
 foi calibrada nele), uma para terra e outra para água (curvas_s2.json). Água: rios e lagos ficam com
 a cor real; o mar (OSM) usa a água do satélite perto da costa e passa ao Blue Marble onde o mosaico
 de satélite acaba. Bloco sem terra nem água interior não é enviado (o app trata 404 como vazio).
@@ -59,7 +59,7 @@ from PIL import Image  # noqa: E402
 BASE = Path(__file__).parent
 GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best'
 UA = 'termi-blocos/2.0 (+https://github.com/albertocolombara/voo-ao-vivo-teste)'
-QUALIDADE = {'w10': 78, 'w8': 78, 'l10': 80, 'l9': 80}
+QUALIDADE = {'w10': 78, 'w8': 78, 'l9': 80}
 CACHE_CONTROL = 'public, max-age=604800'
 MARGEM = 80  # px do nível 10 em volta do grupo (~5 km), para a água do mar sumir sem emenda
 LUZ_MIN = 0.02  # bloco de luzes só onde há área construída com luz de verdade
@@ -223,7 +223,7 @@ def webp(rgb, q):
 
 # ---------- um grupo (bloco do nível 8) ----------
 
-def grupo(r8, c8, filhos_w10, faz_w8, filhos_l10):
+def grupo(r8, c8, filhos_w10, faz_w8, candidatos_terra):
     """Devolve {chave: bytes} dos blocos do grupo e estatísticas."""
     import cv2
     from scipy.ndimage import gaussian_filter
@@ -252,7 +252,7 @@ def grupo(r8, c8, filhos_w10, faz_w8, filhos_l10):
         if faz_w8 and proprio.any():
             red = cv2.resize(rgb.transpose(1, 2, 0), (512, 512), interpolation=cv2.INTER_AREA).transpose(2, 0, 1)
             saida[f'blocos/w8/{r8}/{c8}.webp'] = webp(red, QUALIDADE['w8'])
-    if filhos_l10:
+    if candidatos_terra:
         r7, c7 = r8 // 2, c8 // 2
         noite7 = gibs('VIIRS_Black_Marble', '2016-01-01', '500m', 'png', 7, r7, c7, 'L')
         if noite7 is not None:
@@ -260,12 +260,6 @@ def grupo(r8, c8, filhos_w10, faz_w8, filhos_l10):
             if luz.max() > LUZ_MIN:
                 built = ler_construido(o, s, l, n, lado)
                 if built is not None:
-                    for (r, c) in filhos_l10:
-                        i, j = (r - r8 * 4) * 512, (c - c8 * 4) * 512
-                        b, g = built[i:i + 512, j:j + 512], luz[i:i + 512, j:j + 512]
-                        if (b * g).max() < LUZ_MIN:
-                            continue
-                        saida[f'blocos/l10/{r}/{c}.webp'] = webp(np.stack([b, g, np.zeros_like(b)]), QUALIDADE['l10'])
                     # nível 9: os 2×2 blocos do grupo, reduzidos por área
                     b9 = cv2.resize(built, (1024, 1024), interpolation=cv2.INTER_AREA)
                     g9 = cv2.resize(luz, (1024, 1024), interpolation=cv2.INTER_AREA)
@@ -343,7 +337,7 @@ def candidatos():
     for r, c in ler('w10'):
         g = grupos.setdefault((r // 4, c // 4), [[], False, []])
         g[0].append((r, c))
-        g[2].append((r, c))  # luzes só em terra: mesmos candidatos
+        g[2].append((r, c))  # luzes só onde há terra
     for r, c in ler('w8'):
         grupos.setdefault((r, c), [[], False, []])[1] = True
     return grupos, len(ler('w10')), len(ler('w8'))
@@ -403,7 +397,7 @@ def main():
         total_grupos = len(chaves)
         print('--- projeção para o mundo (menos a Antártida) ---')
         soma = 0
-        for cam in ('w10', 'w8', 'l10', 'l9'):
+        for cam in ('w10', 'w8', 'l9'):
             gb = tot.get(cam, 0) / n * total_grupos / 1e9
             blocos = tot.get(cam + '#', 0) / n * total_grupos
             soma += gb
