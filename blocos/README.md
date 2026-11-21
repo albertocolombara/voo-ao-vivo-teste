@@ -1,5 +1,17 @@
 # Blocos de paisagem da janela
 
+> **Desde 21/11/2026 as camadas vêm do Sentinel-2 (ESA WorldCover 2021):** `gerar_s2.py`, workflow
+> "Blocos de paisagem (Sentinel-2)". `w10` e `w8` foram regravadas por cima do Landsat; a camada de
+> luzes passou a ser `l9` (R = área construída do WorldCover, G = luz real do Black Marble), no lugar
+> da `i9`. O globo do app usa os mesmos blocos de perto. Amostra de 160 grupos: ~7,3 GB (`w10`, WebP 70),
+> ~0,5 GB (`w8`), ~0,25 GB (`l9`). Crédito obrigatório (CC BY 4.0): "© ESA WorldCover project 2021 /
+> Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium". A máscara
+> do mar vem do OSM Land/Water do GIBS (© colaboradores do OpenStreetMap, ODbL).
+> Depois da geração, `limpar_antigos.py` (modo "limpar" do workflow) apaga os blocos do Landsat que
+> sobraram; a `i9` só sai quando nenhum app em teste a usar.
+>
+> O texto abaixo descreve o gerador antigo (`gerar.py`, Landsat), mantido para referência.
+
 Gera os blocos de terra que a janela do Termi desenha em volta do avião e envia ao Cloudflare R2 (`blocos/{camada}/{linha}/{coluna}.webp`).
 
 | Camada | Fonte (NASA GIBS, EPSG:4326) | Nível | Uso |

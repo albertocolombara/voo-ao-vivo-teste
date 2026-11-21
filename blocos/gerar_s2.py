@@ -59,7 +59,11 @@ from PIL import Image  # noqa: E402
 BASE = Path(__file__).parent
 GIBS = 'https://gibs.earthdata.nasa.gov/wmts/epsg4326/best'
 UA = 'termi-blocos/2.0 (+https://github.com/albertocolombara/voo-ao-vivo-teste)'
-QUALIDADE = {'w10': 78, 'w8': 78, 'l9': 80}
+# Qualidade 70 (o Landsat era 78): na amostra de 160 grupos (21/11/2026) o mundo daria ~8,7 GB a 78;
+# a 70 fica ~17% menor (~7,3 GB), e o R2 inteiro cabe nos 10 GB grátis com folga.
+QUALIDADE = {'w10': 70, 'w8': 70, 'l9': 80}
+# Trava de espaço: cada parte para se passar disto (20 partes × 0,46 GB ≈ 9,2 GB no pior caso).
+LIMITE_POR_PARTE = 0.46e9
 CACHE_CONTROL = 'public, max-age=604800'
 MARGEM = 80  # px do nível 10 em volta do grupo (~5 km), para a água do mar sumir sem emenda
 LUZ_MIN = 0.02  # bloco de luzes só onde há área construída com luz de verdade
@@ -385,6 +389,13 @@ def main():
             for kk, v in tam.items():
                 tot[kk] = tot.get(kk, 0) + v
             feitos.add(g)
+            if enviar and sum(v for kk, v in tot.items() if '#' not in kk) > LIMITE_POR_PARTE * 20 / a.partes:
+                print('PARADO: a parte passou do limite de espaço; revisar a qualidade antes de continuar', file=sys.stderr, flush=True)
+                for f2 in futs:
+                    f2.cancel()
+                corpo = '\n'.join(f'{x} {y}' for x, y in sorted(feitos))
+                s3.put_object(Bucket=os.environ['R2_BUCKET'], Key=progresso(a.parte, a.partes), Body=corpo.encode(), ContentType='text/plain')
+                sys.exit(2)
             if enviar and (k % 100 == 0 or k == len(futs)):
                 corpo = '\n'.join(f'{x} {y}' for x, y in sorted(feitos))
                 s3.put_object(Bucket=os.environ['R2_BUCKET'], Key=progresso(a.parte, a.partes), Body=corpo.encode(), ContentType='text/plain')

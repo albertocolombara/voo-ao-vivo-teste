@@ -10,10 +10,17 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: 'amostra (só mede) ou gerar (envia ao R2)'
+        description: 'amostra (só mede), gerar (envia ao R2), contar ou limpar (blocos antigos do Landsat)'
         required: true
         type: choice
-        options: [amostra, gerar]
+        options: [amostra, gerar, contar, limpar]
+      antes:
+        description: 'contar/limpar: apaga o que foi gravado antes desta data e hora (UTC, AAAA-MM-DDTHH:MM)'
+        required: false
+      i9:
+        description: 'contar/limpar: incluir a camada antiga de luzes i9'
+        type: boolean
+        default: false
 
 concurrency:
   group: blocos-s2-${{ github.ref }}-${{ inputs.modo || 'amostra' }}
@@ -58,3 +65,23 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: python blocos/gerar_s2.py --parte ${{ matrix.parte }} --partes 20 --processos 4
+
+  limpar:
+    if: github.event_name == 'workflow_dispatch' && (inputs.modo == 'contar' || inputs.modo == 'limpar')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: blocos
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install rasterio numpy pillow scipy opencv-python-headless boto3
+      - env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        working-directory: blocos
+        run: python limpar_antigos.py --antes "${{ inputs.antes }}" ${{ inputs.i9 && '--i9' || '' }} ${{ inputs.modo == 'limpar' && '--apagar' || '' }}
