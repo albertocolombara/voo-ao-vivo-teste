@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -18,6 +18,6 @@ jobs:
       - run: |
           git config user.name github-actions
           git config user.email github-actions@users.noreply.github.com
-          git add -f saida/*.jpg
+          git add -f saida2
           git commit -m "Prévias do diagnóstico [skip ci]"
           git push
