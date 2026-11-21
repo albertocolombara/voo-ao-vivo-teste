@@ -303,8 +303,12 @@ def cliente_r2():
     )
 
 
+# Muda a cada rodada completa nova (v2, 21/11/2026: mar todo no Blue Marble), para não pular tudo.
+RODADA = 'v2'
+
+
 def progresso(parte, partes):
-    return f'blocos/_s2/feitos-{parte}-de-{partes}.txt'
+    return f'blocos/_s2/{RODADA}/feitos-{parte}-de-{partes}.txt'
 
 
 def ler_progresso(s3, chave):
@@ -366,6 +370,7 @@ def main():
     ap.add_argument('--limite', type=int, default=0)
     ap.add_argument('--saida', help='grava em disco em vez de enviar')
     ap.add_argument('--processos', type=int, default=4)
+    ap.add_argument('--sem-luzes', action='store_true', help='só w10 e w8 (as luzes não mudaram)')
     ap.add_argument('--grupos', help='só estes grupos do nível 8, "linha,coluna;linha,coluna" (teste)')
     a = ap.parse_args()
 
@@ -388,7 +393,7 @@ def main():
         s3 = cliente_r2()
         feitos = ler_progresso(s3, progresso(a.parte, a.partes))
         print(f'grupos já feitos nesta parte: {len(feitos)}', flush=True)
-    tarefas = [(g[0], g[1], *grupos[g], a.saida, enviar) for g in meus if g not in feitos]
+    tarefas = [(g[0], g[1], grupos[g][0], grupos[g][1], [] if a.sem_luzes else grupos[g][2], a.saida, enviar) for g in meus if g not in feitos]
     print(f'grupos: {len(tarefas)} de {len(meus)} (parte {a.parte}/{a.partes})', flush=True)
     tot, erros, t0 = {}, 0, time.time()
     with ProcessPoolExecutor(a.processos) as ex:
