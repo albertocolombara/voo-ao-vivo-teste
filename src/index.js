@@ -41,8 +41,15 @@ const BUCKETS = [
   ['b180', 180, 360],
   ['b360', 360, Infinity],
 ];
-const WATCH_SHORT_PER_RUN = 3; // voos com pouso em menos de 90 min
-const WATCH_LONG_PER_RUN = 5; // voos de 90 min ou mais (o que ainda falta medir)
+// Voos acompanhados por coleta, por faixa de previsão (min). Cota fixa por faixa e sorteio dentro dela,
+// para medir todas as faixas que o app oferece (antes, os mais longos de cada grupo dominavam a amostra).
+const WATCH_QUOTAS = [
+  [25, 60, 1],
+  [60, 90, 1],
+  [90, 180, 3],
+  [180, 360, 2],
+  [360, 900, 1],
+];
 const WATCH_MAX_ACTIVE = 500; // inclui os da versão 1 ainda no ar
 const WATCH_DEST_KM = 400; // só acompanha voos cujo destino fica dentro de uma das 9 regiões
 const LANDED_WINDOW_MS = 45 * 60000; // visto perto do destino há até 45 min e sumiu = pousou
@@ -248,7 +255,9 @@ export async function collect(env, now = Date.now()) {
       }
     }
     rows.push({ point: r.point.id, status: r.status, http: r.http, ms: r.ms, ...s });
-    if (r.status === 'ok') {
+    // O adsb.lol às vezes responde 200 sem nenhum avião. Essa região conta como não consultada:
+    // não substitui a foto anterior na soma mundial nem faz voos parecerem pousados.
+    if (r.status === 'ok' && r.ac.length > 0) {
       snapshots.push({ point: r.point.id, json: JSON.stringify(flights) });
       flightsByPoint.set(r.point.id, flights);
     }
@@ -355,15 +364,18 @@ async function trackLandings(env, now, queried, airMap, flightsByPoint) {
 
   // novos voos: destino dentro de uma das regiões; mais voos longos, que ainda não foram medidos
   let room = WATCH_MAX_ACTIVE - watching.size;
-  let shortLeft = WATCH_SHORT_PER_RUN, longLeft = WATCH_LONG_PER_RUN;
+  const left = WATCH_QUOTAS.map(([, , n]) => n);
   const candidates = [];
   for (const [pointId, flights] of flightsByPoint) for (const f of flights) candidates.push({ pointId, f });
-  candidates.sort((x, y) => y.f.eta - x.f.eta);
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
   for (const { pointId, f } of candidates) {
-    if (room <= 0 || (shortLeft <= 0 && longLeft <= 0)) break;
-    if (watching.has(f.hex) || f.eta < 25 || f.eta > 900) continue;
-    const isLong = f.eta >= 90;
-    if (isLong ? longLeft <= 0 : shortLeft <= 0) continue;
+    if (room <= 0 || left.every((n) => n <= 0)) break;
+    if (watching.has(f.hex)) continue;
+    const q = WATCH_QUOTAS.findIndex(([lo, hi]) => f.eta >= lo && f.eta < hi);
+    if (q < 0 || left[q] <= 0) continue;
     const dp = destPointOf(f.d.lat, f.d.lon);
     if (!dp) continue;
     stmts.push(
@@ -373,7 +385,7 @@ async function trackLandings(env, now, queried, airMap, flightsByPoint) {
     );
     watching.add(f.hex);
     room--;
-    if (isLong) longLeft--; else shortLeft--;
+    left[q]--;
   }
   if (stmts.length) await env.DB.batch(stmts);
 }
