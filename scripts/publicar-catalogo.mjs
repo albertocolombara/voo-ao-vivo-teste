@@ -36,9 +36,30 @@ if (erros.length) {
 }
 console.log(`catálogo ok: ${ids.size} souvenirs`);
 
+// Medalhas (render 2D em WebP e modelo 3D em GLB) em colecao/medalhas/, com a versão no nome:
+// um arquivo publicado nunca muda (cache de 1 ano); uma medalha refeita entra como -v2.
+const PASTA = 'colecao/medalhas';
+const TIPOS = { '.webp': 'image/webp', '.glb': 'model/gltf-binary' };
+const medalhas = fs.existsSync(PASTA) ? fs.readdirSync(PASTA).filter((n) => TIPOS[n.slice(n.lastIndexOf('.'))]) : [];
+for (const s of c.souvenirs ?? []) {
+  for (const campo of ['imagem2d', 'modelo3d']) {
+    const caminho = s[campo];
+    if (caminho && !fs.existsSync(caminho)) erros.push(`${s.id}: ${campo} aponta para ${caminho}, que não existe`);
+  }
+}
+if (erros.length) {
+  console.error('Catálogo recusado:\n- ' + erros.join('\n- '));
+  process.exit(1);
+}
+
 if (!process.argv.includes('--conferir')) {
   const r2 = criarR2();
   if (!r2) throw new Error('faltam os segredos do R2');
+  for (const nome of medalhas) {
+    const tipo = TIPOS[nome.slice(nome.lastIndexOf('.'))];
+    await r2.enviar(`${PASTA}/${nome}`, fs.readFileSync(`${PASTA}/${nome}`), { contentType: tipo, cacheControl: 'public, max-age=31536000, immutable', gzip: false });
+    console.log(`medalha enviada: ${PASTA}/${nome}`);
+  }
   const saida = JSON.stringify({ ...c, atualizadoEm: new Date().toISOString() });
   await r2.enviar('colecao/catalogo.json', saida, { cacheControl: 'public, max-age=3600' });
   console.log('publicado em colecao/catalogo.json');

@@ -10,8 +10,9 @@
    "preco": 200,
    "nome": "Japão",
    "nomeNativo": "日本",
-   "imagem2d": null,
-   "modelo3d": null,
+   "motivo": "Sakura",
+   "imagem2d": "colecao/medalhas/medalha-jp-v1.webp",
+   "modelo3d": "colecao/medalhas/medalha-jp-v1.glb",
    "disponivelDesde": null
   },
   {
@@ -22,8 +23,9 @@
    "preco": 200,
    "nome": "Portugal",
    "nomeNativo": "Portugal",
-   "imagem2d": null,
-   "modelo3d": null,
+   "motivo": "Bonde",
+   "imagem2d": "colecao/medalhas/medalha-pt-v1.webp",
+   "modelo3d": "colecao/medalhas/medalha-pt-v1.glb",
    "disponivelDesde": null
   },
   {
@@ -34,6 +36,7 @@
    "preco": 200,
    "nome": "Espanha",
    "nomeNativo": "España",
+   "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
    "disponivelDesde": null
@@ -46,8 +49,9 @@
    "preco": 200,
    "nome": "França",
    "nomeNativo": "France",
-   "imagem2d": null,
-   "modelo3d": null,
+   "motivo": "Torre Eiffel",
+   "imagem2d": "colecao/medalhas/medalha-fr-v1.webp",
+   "modelo3d": "colecao/medalhas/medalha-fr-v1.glb",
    "disponivelDesde": null
   },
   {
@@ -58,6 +62,7 @@
    "preco": 200,
    "nome": "Itália",
    "nomeNativo": "Italia",
+   "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
    "disponivelDesde": null
@@ -70,6 +75,7 @@
    "preco": 200,
    "nome": "Alemanha",
    "nomeNativo": "Deutschland",
+   "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
    "disponivelDesde": null
@@ -82,6 +88,7 @@
    "preco": 200,
    "nome": "Holanda",
    "nomeNativo": "Nederland",
+   "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
    "disponivelDesde": null
@@ -94,8 +101,9 @@
    "preco": 200,
    "nome": "EUA",
    "nomeNativo": "United States",
-   "imagem2d": null,
-   "modelo3d": null,
+   "motivo": "Estátua da Liberdade",
+   "imagem2d": "colecao/medalhas/medalha-us-v1.webp",
+   "modelo3d": "colecao/medalhas/medalha-us-v1.glb",
    "disponivelDesde": null
   },
   {
@@ -106,6 +114,7 @@
    "preco": 200,
    "nome": "Argentina",
    "nomeNativo": "Argentina",
+   "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
    "disponivelDesde": null
@@ -118,6 +127,7 @@
    "preco": 200,
    "nome": "Chile",
    "nomeNativo": "Chile",
+   "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
    "disponivelDesde": null
@@ -130,6 +140,7 @@
    "preco": 200,
    "nome": "Uruguai",
    "nomeNativo": "Uruguay",
+   "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
    "disponivelDesde": null
@@ -142,8 +153,9 @@
    "preco": 200,
    "nome": "Brasil",
    "nomeNativo": "Brasil",
-   "imagem2d": null,
-   "modelo3d": null,
+   "motivo": "Pão de Açúcar",
+   "imagem2d": "colecao/medalhas/medalha-br-v1.webp",
+   "modelo3d": "colecao/medalhas/medalha-br-v1.glb",
    "disponivelDesde": null
   },
   {
@@ -154,8 +166,9 @@
    "preco": 200,
    "nome": "Reino Unido",
    "nomeNativo": "United Kingdom",
-   "imagem2d": null,
-   "modelo3d": null,
+   "motivo": "Big Ben",
+   "imagem2d": "colecao/medalhas/medalha-gb-v1.webp",
+   "modelo3d": "colecao/medalhas/medalha-gb-v1.glb",
    "disponivelDesde": null
   }
  ]
