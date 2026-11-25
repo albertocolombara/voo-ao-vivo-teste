@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDb } from '../src/db.mjs';
-import { collect, computeStats, renderStats, flightsResponse, ATTRIBUTION } from '../src/index.js';
+import { collect, computeStats, renderStats, flightsResponse, ATTRIBUTION, AREAS } from '../src/index.js';
 import { criarR2 } from '../src/r2.mjs';
 import { publicarNoR2 } from '../src/publicar.mjs';
 import { createVrsRoutes } from '../src/routes-vrs.mjs';
@@ -61,7 +61,7 @@ if (r2) {
   // Nesse caso a região não é publicada e o app continua com o arquivo anterior.
   const vazias = new Set(result.rows.filter((r) => r.status === 'ok' && r.seen === 0).map((r) => r.point));
   const publicaveis = new Map([...result.flightsByPoint].filter(([p]) => !vazias.has(p)));
-  const { indice, falhas } = await publicarNoR2(r2, publicaveis, now, ATTRIBUTION, state.indiceR2);
+  const { indice, falhas } = await publicarNoR2(r2, publicaveis, now, ATTRIBUTION, state.indiceR2, AREAS);
   state.indiceR2 = indice;
   r2Resumo = `R2: ${publicaveis.size - falhas.filter((f) => !f.includes('indice') && !f.startsWith('histórico')).length}/${result.flightsByPoint.size} regiões enviadas`;
   if (vazias.size) r2Resumo += ` · sem aviões na resposta (mantidas): ${[...vazias].join(', ')}`;

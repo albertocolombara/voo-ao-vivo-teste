@@ -74,7 +74,12 @@ export const faixaDoDia = (agora) => {
 };
 
 /** Envia os arquivos das regiões coletadas agora e atualiza o índice. Erros não param a coleta. */
-export async function publicarNoR2(r2, flightsByPoint, agora, atribuicao, indiceAnterior = {}) {
+/**
+ * `areas` (opcional): centro e raio de cada região, gravados no índice. O app usa para saber se o
+ * avião está fora da área coletada (posição estimada, sem aviso) ou se sumiu dentro dela (aviso de
+ * sem sinal). Campo novo e opcional no contrato v1: apps antigos ignoram.
+ */
+export async function publicarNoR2(r2, flightsByPoint, agora, atribuicao, indiceAnterior = {}, areas = {}) {
   const indice = { ...indiceAnterior };
   const falhas = [];
   for (const [regiao, voos] of flightsByPoint) {
@@ -82,7 +87,7 @@ export async function publicarNoR2(r2, flightsByPoint, agora, atribuicao, indice
     const corpo = JSON.stringify(arq);
     try {
       await r2.enviar(`voos/${arq.regiao}.json`, corpo);
-      indice[arq.regiao] = { nome: regiao, coletadoEm: arq.coletadoEm, voos: arq.voos.length };
+      indice[arq.regiao] = { nome: regiao, coletadoEm: arq.coletadoEm, voos: arq.voos.length, ...(areas[regiao] ? { area: areas[regiao] } : {}) };
     } catch (e) {
       falhas.push(String(e.message || e));
       continue;

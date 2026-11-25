@@ -13,7 +13,7 @@ const SPACING_MS = 2500; // pausa entre chamadas que contam na cota (evita 429)
 // Modo mundial: regiões espalhadas pelos fusos horários, consultadas em rodízio a cada execução (10 min).
 // Sem chave (500 chamadas/dia): 9 regiões, 3 por execução -> cada região a cada 30 min, 432/dia.
 // Com chave (1.000/dia, 300/h): 12 regiões, 6 por execução -> cada região a cada 20 min, 864/dia (36/h).
-const WORLD_POINTS = [
+export const WORLD_POINTS = [
   { id: 'Londres-Paris', lat: 50.5, lon: 0.5 },
   { id: 'Nova York', lat: 40.6, lon: -73.8 },
   { id: 'Tóquio', lat: 35.6, lon: 139.8 },
@@ -53,6 +53,8 @@ const WATCH_QUOTAS = [
 const WATCH_MAX_ACTIVE = 500; // inclui os da versão 1 ainda no ar
 const WATCH_DEST_KM = 400; // só acompanha voos cujo destino fica dentro de uma das 9 regiões
 const LANDED_WINDOW_MS = 45 * 60000; // visto perto do destino há até 45 min e sumiu = pousou
+/** Área de cada região (centro e raio), para o app saber se o avião deveria estar no radar. */
+export const AREAS = Object.fromEntries(WORLD_POINTS.map((p) => [p.id, { lat: p.lat, lon: p.lon, raioKm: Math.round(RADIUS_NM * 1.852) }]));
 export const ATTRIBUTION = 'Dados de voo: adsb.lol (ODbL 1.0) · Rotas: Virtual Radar Server Standing Data (CC0 1.0) · Companhias: OpenFlights (ODbL 1.0)';
 const UA = 'voo-ao-vivo-teste/0.1 (+https://github.com/albertocolombara/voo-ao-vivo-teste)';
 

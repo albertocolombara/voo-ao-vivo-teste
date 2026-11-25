@@ -85,3 +85,12 @@ test('envia JSON comprimido com Content-Encoding: gzip', async () => {
   assert.equal(pedidos[1].init.headers['content-encoding'], undefined);
   assert.equal(pedidos[1].init.body.toString(), 'oi');
 });
+
+test('o índice leva a área de cada região quando informada', async () => {
+  const enviados = {};
+  const r2 = { enviar: async (k, corpo) => { enviados[k] = corpo; } };
+  const agora = Date.UTC(2026, 10, 24, 15, 47);
+  await publicarNoR2(r2, new Map([['São Paulo', []]]), agora, 'x', {}, { 'São Paulo': { lat: -23, lon: -46, raioKm: 463 } });
+  const indice = JSON.parse(enviados['voos/indice.json']);
+  assert.deepEqual(indice.regioes['sao-paulo'].area, { lat: -23, lon: -46, raioKm: 463 });
+});
