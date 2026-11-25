@@ -120,9 +120,13 @@ function matchLeg(route, ac) {
 //     (metade para ajustar, metade para conferir): em cruzeiro, média entre a velocidade atual
 //     e 440 kt (amortece ventos de cauda fortes); fora de cruzeiro, no mínimo 440 kt.
 //     No teste, 6 h+ caiu de ~32 para ~24 min. Até 2.500 km, segue igual à v2.
-const ETA_VERSION = 3;
+// v4: em cruzeiro é a altitude (25.000 pés ou mais), não a velocidade. Com vento de proa forte
+//     (velocidade no solo abaixo de 380 kt), o avião era tratado como "subindo" e a previsão usava
+//     470 kt: pouso previsto ~14 min cedo demais (123 pousos reais nessa situação; até 2.500 km,
+//     típico de 14,3 para 5,1 min). Caso relatado: TWB242 NRT→ICN, 25/11/2026.
+const ETA_VERSION = 4;
 function etaMin(remKm, gs, alt) {
-  const cruising = typeof alt === 'number' && alt >= 25000 && gs >= 380;
+  const cruising = typeof alt === 'number' && alt >= 25000;
   if (remKm > 2500) {
     const speed = cruising ? 0.5 * gs + 0.5 * 440 : Math.max(gs, 440);
     return ((0.98 * remKm) / (speed * 1.852)) * 60 + 5;
