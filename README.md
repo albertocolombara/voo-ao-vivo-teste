@@ -82,3 +82,7 @@ Dados de voo: adsb.lol, licença ODbL 1.0. O app final precisa mostrar essa atri
 Rotas: [Virtual Radar Server Standing Data](https://github.com/vradarserver/standing-data), licença CC0 1.0 (domínio público).
 
 O serviço de rotas do próprio adsb.lol (`/api/0/routeset`) responde vazio quando chamado fora do navegador, por isso não é usado.
+
+## Catálogo da coleção do Termi
+
+`colecao/catalogo.json` é o catálogo de souvenirs que o app lê do R2 (`/colecao/catalogo.json`). Para lançar um país novo: acrescente o souvenir no fim da lista (com `imagem2d` e `modelo3d` já enviados ao R2, se houver) e faça o merge na `main`. O workflow "Catálogo da coleção" confere e publica. Ele recusa o arquivo se algum souvenir que já existia sumir, porque a coleção só cresce. Com `disponivelDesde` (data ISO), o souvenir só aparece a partir dessa data.

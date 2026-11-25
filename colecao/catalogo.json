@@ -1,0 +1,162 @@
+{
+ "versao": 1,
+ "atualizadoEm": "2026-11-25T00:00:00.000Z",
+ "souvenirs": [
+  {
+   "id": "pais-jp",
+   "pais": "JP",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Japão",
+   "nomeNativo": "日本",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-pt",
+   "pais": "PT",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Portugal",
+   "nomeNativo": "Portugal",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-es",
+   "pais": "ES",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Espanha",
+   "nomeNativo": "España",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-fr",
+   "pais": "FR",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "França",
+   "nomeNativo": "France",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-it",
+   "pais": "IT",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Itália",
+   "nomeNativo": "Italia",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-de",
+   "pais": "DE",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Alemanha",
+   "nomeNativo": "Deutschland",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-nl",
+   "pais": "NL",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Holanda",
+   "nomeNativo": "Nederland",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-us",
+   "pais": "US",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "EUA",
+   "nomeNativo": "United States",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-ar",
+   "pais": "AR",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Argentina",
+   "nomeNativo": "Argentina",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-cl",
+   "pais": "CL",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Chile",
+   "nomeNativo": "Chile",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-uy",
+   "pais": "UY",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Uruguai",
+   "nomeNativo": "Uruguay",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-br",
+   "pais": "BR",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Brasil",
+   "nomeNativo": "Brasil",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  },
+  {
+   "id": "pais-gb",
+   "pais": "GB",
+   "tipo": "pais",
+   "metal": "niquel",
+   "preco": 200,
+   "nome": "Reino Unido",
+   "nomeNativo": "United Kingdom",
+   "imagem2d": null,
+   "modelo3d": null,
+   "disponivelDesde": null
+  }
+ ]
+}
