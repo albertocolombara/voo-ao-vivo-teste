@@ -111,33 +111,12 @@ function matchLeg(route, ac) {
   return { routed: true, leg: okRatio && okHeading ? best : null };
 }
 
-// Previsão de pouso (versão 3).
-// v1: só a velocidade atual. Logo após a decolagem o avião ainda está subindo e lento,
-//     e voos longos saíam muito maiores que o real (6 h+: erro típico de ~56 min).
-// v2: longe do destino e fora de cruzeiro, usa velocidade de cruzeiro típica (470 kt).
-//     6 h+ caiu para ~37 min; até 1h30 ficou ~3-4 min.
-// v3: para mais de 2.500 km restantes, parâmetros ajustados em 896 pousos reais
-//     (metade para ajustar, metade para conferir): em cruzeiro, média entre a velocidade atual
-//     e 440 kt (amortece ventos de cauda fortes); fora de cruzeiro, no mínimo 440 kt.
-//     No teste, 6 h+ caiu de ~32 para ~24 min. Até 2.500 km, segue igual à v2.
-// v4: em cruzeiro é a altitude (25.000 pés ou mais), não a velocidade. Com vento de proa forte
-//     (velocidade no solo abaixo de 380 kt), o avião era tratado como "subindo" e a previsão usava
-//     470 kt: pouso previsto ~14 min cedo demais (123 pousos reais nessa situação; até 2.500 km,
-//     típico de 14,3 para 5,1 min). Caso relatado: TWB242 NRT→ICN, 25/11/2026.
-const ETA_VERSION = 4;
-function etaMin(remKm, gs, alt) {
-  const cruising = typeof alt === 'number' && alt >= 25000;
-  if (remKm > 2500) {
-    const speed = cruising ? 0.5 * gs + 0.5 * 440 : Math.max(gs, 440);
-    return ((0.98 * remKm) / (speed * 1.852)) * 60 + 5;
-  }
-  let speed = gs;
-  if (remKm > 300 && !cruising) speed = Math.max(gs, 470);
-  return (remKm / (speed * 1.852)) * 60 + 8;
-}const bucketOf = (eta) => (BUCKETS.find(([, lo, hi]) => eta >= lo && eta < hi) || [null])[0];
+import { ETA_VERSION, etaMin } from './previsao.mjs';
+
+const bucketOf = (eta) => (BUCKETS.find(([, lo, hi]) => eta >= lo && eta < hi) || [null])[0];
 
 function toFlight(ac, route, leg) {
-  const eta = etaMin(leg.pd, ac.gs, ac.alt_baro);
+  const eta = etaMin(leg.pd, ac.gs, ac.alt_baro, leg.o.iata || leg.o.icao, leg.d.iata || leg.d.icao);
   return {
     hex: ac.hex,
     cs: ac.flight.trim(),
@@ -340,7 +319,7 @@ async function trackLandings(env, now, queried, airMap, flightsByPoint) {
         const remKm = distKm(a.lat, a.lon, w.dest_lat, w.dest_lon);
         stmts.push(
           env.DB.prepare('UPDATE watch SET mid_ts = ?, mid_rem_km = ?, mid_pred_land = ? WHERE hex = ? AND first_ts = ?').bind(
-            now, remKm, Math.round(now + etaMin(remKm, a.gs, a.alt_baro) * 60000), w.hex, w.first_ts
+            now, remKm, Math.round(now + etaMin(remKm, a.gs, a.alt_baro, w.orig, w.dest) * 60000), w.hex, w.first_ts
           )
         );
       }

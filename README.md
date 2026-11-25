@@ -60,7 +60,7 @@ Para parar: aba *Actions → Coleta de voos → ⋯ → Disable workflow*. Os da
 - "Perdidos" mistura falha de cobertura com rota errada que passou no filtro.
 - Cada região é vista a cada 30 minutos, então o pouso é estimado pela última posição vista perto do destino. Voos sem receptor no fim da rota aparecem como "perdidos".
 - `flights.json` só traz os voos das 3 regiões da última coleta.
-- A previsão inclui 8 minutos fixos para aproximação e pouso. Se o viés mediano ficar longe de zero, ajuste esse valor em `etaMin`, no arquivo `src/index.js`.
+- A previsão (`src/previsao.mjs`) inclui 8 minutos fixos para aproximação e pouso, mais um ajuste aprendido com os pousos registrados: minutos por aeroporto de destino até 2.500 km e fator por rota acima disso (`src/ajuste-previsao.json`). Para reaprender com os pousos novos: `node scripts/ajustar-previsao.mjs` (mostra o erro antes e depois, numa metade dos pousos que não entrou no ajuste) e commit do JSON.
 - `flights.json` é atualizado uma vez por hora, então serve para conferir o formato, não para uso real.
 
 ## Nuvens reais (workflow "Nuvens")
