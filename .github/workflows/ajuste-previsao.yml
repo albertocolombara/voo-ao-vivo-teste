@@ -1,0 +1,31 @@
+name: Ajuste da previsão de pouso
+
+# Toda segunda-feira, reaprende o ajuste por destino e rota com os pousos registrados em data/
+# (scripts/ajustar-previsao.mjs) e salva src/ajuste-previsao.json. Aprovado pelo Alberto em 25/11/2026.
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ajuste:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Confere os testes
+        run: npm test
+      - name: Aprende o ajuste
+        run: node scripts/ajustar-previsao.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Salva
+        run: |
+          git config user.name "coleta-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/ajuste-previsao.json
+          git commit -m "ajuste da previsão $(date -u +%Y-%m-%d)" || exit 0
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done
