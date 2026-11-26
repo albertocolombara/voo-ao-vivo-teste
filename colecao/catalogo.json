@@ -13,6 +13,7 @@
    "motivo": "Sakura",
    "imagem2d": "colecao/medalhas/medalha-jp-v1.webp",
    "modelo3d": "colecao/medalhas/medalha-jp-v1.glb",
+   "giro": "colecao/medalhas/medalha-jp-giro-v1.webp",
    "disponivelDesde": null
   },
   {
@@ -26,6 +27,7 @@
    "motivo": "Bonde",
    "imagem2d": "colecao/medalhas/medalha-pt-v1.webp",
    "modelo3d": "colecao/medalhas/medalha-pt-v1.glb",
+   "giro": "colecao/medalhas/medalha-pt-giro-v1.webp",
    "disponivelDesde": null
   },
   {
@@ -39,6 +41,7 @@
    "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
+   "giro": null,
    "disponivelDesde": null
   },
   {
@@ -52,6 +55,7 @@
    "motivo": "Torre Eiffel",
    "imagem2d": "colecao/medalhas/medalha-fr-v1.webp",
    "modelo3d": "colecao/medalhas/medalha-fr-v1.glb",
+   "giro": "colecao/medalhas/medalha-fr-giro-v1.webp",
    "disponivelDesde": null
   },
   {
@@ -65,6 +69,7 @@
    "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
+   "giro": null,
    "disponivelDesde": null
   },
   {
@@ -78,6 +83,7 @@
    "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
+   "giro": null,
    "disponivelDesde": null
   },
   {
@@ -91,6 +97,7 @@
    "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
+   "giro": null,
    "disponivelDesde": null
   },
   {
@@ -104,6 +111,7 @@
    "motivo": "Estátua da Liberdade",
    "imagem2d": "colecao/medalhas/medalha-us-v1.webp",
    "modelo3d": "colecao/medalhas/medalha-us-v1.glb",
+   "giro": "colecao/medalhas/medalha-us-giro-v1.webp",
    "disponivelDesde": null
   },
   {
@@ -117,6 +125,7 @@
    "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
+   "giro": null,
    "disponivelDesde": null
   },
   {
@@ -130,6 +139,7 @@
    "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
+   "giro": null,
    "disponivelDesde": null
   },
   {
@@ -143,6 +153,7 @@
    "motivo": null,
    "imagem2d": null,
    "modelo3d": null,
+   "giro": null,
    "disponivelDesde": null
   },
   {
@@ -156,6 +167,7 @@
    "motivo": "Pão de Açúcar",
    "imagem2d": "colecao/medalhas/medalha-br-v1.webp",
    "modelo3d": "colecao/medalhas/medalha-br-v1.glb",
+   "giro": "colecao/medalhas/medalha-br-giro-v1.webp",
    "disponivelDesde": null
   },
   {
@@ -169,6 +181,7 @@
    "motivo": "Big Ben",
    "imagem2d": "colecao/medalhas/medalha-gb-v1.webp",
    "modelo3d": "colecao/medalhas/medalha-gb-v1.glb",
+   "giro": "colecao/medalhas/medalha-gb-giro-v1.webp",
    "disponivelDesde": null
   }
  ]
