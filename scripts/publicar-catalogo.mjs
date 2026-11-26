@@ -60,6 +60,18 @@ if (!process.argv.includes('--conferir')) {
     await r2.enviar(`${PASTA}/${nome}`, fs.readFileSync(`${PASTA}/${nome}`), { contentType: tipo, cacheControl: 'public, max-age=31536000, immutable', gzip: false });
     console.log(`medalha enviada: ${PASTA}/${nome}`);
   }
+  // Vitrine 3D (página three.js aberta numa WebView do app): colecao/vitrine/v<n>/. Os arquivos de
+  // uma versão não mudam (cache de 1 ano), exceto o index.html (5 min), para ajustes de luz e câmera.
+  const VITRINE = 'colecao/vitrine';
+  const TIPOS_DA_VITRINE = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.txt': 'text/plain; charset=utf-8' };
+  const listar = (pasta) => fs.readdirSync(pasta, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? listar(`${pasta}/${e.name}`) : [`${pasta}/${e.name}`]));
+  for (const arquivo of fs.existsSync(VITRINE) ? listar(VITRINE) : []) {
+    const tipo = TIPOS_DA_VITRINE[arquivo.slice(arquivo.lastIndexOf('.'))];
+    if (!tipo) continue;
+    const cache = arquivo.endsWith('.html') ? 'public, max-age=300' : 'public, max-age=31536000, immutable';
+    await r2.enviar(arquivo, fs.readFileSync(arquivo), { contentType: tipo, cacheControl: cache, gzip: false });
+    console.log(`vitrine enviada: ${arquivo}`);
+  }
   const saida = JSON.stringify({ ...c, atualizadoEm: new Date().toISOString() });
   await r2.enviar('colecao/catalogo.json', saida, { cacheControl: 'public, max-age=3600' });
   console.log('publicado em colecao/catalogo.json');
